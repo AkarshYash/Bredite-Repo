@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Team Profile Hub · US IT Consultants</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f0f4ff;--surface:#fff;--surface2:#f8fafc;--border:#e2e8f0;
+  --primary:#4f46e5;--primary2:#4338ca;--accent:#06b6d4;
+  --success:#10b981;--danger:#ef4444;--warn:#f59e0b;
+  --txt:#1e293b;--txt2:#64748b;--txt3:#94a3b8;
+  --shd:0 2px 12px rgba(79,70,229,.08),0 1px 3px rgba(0,0,0,.06);
+  --pshd:0 8px 40px rgba(79,70,229,.14);
+  --r:20px;--r2:14px;--r3:8px;--pill:999px;
+}
+[data-theme=dark]{
+  --bg:#0d1117;--surface:#161b27;--surface2:#1e2538;--border:#2d3748;
+  --primary:#818cf8;--primary2:#a5b4fc;--txt:#e2e8f0;--txt2:#94a3b8;--txt3:#4a5568;
+  --shd:0 2px 16px rgba(0,0,0,.4);--pshd:0 8px 40px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s}
+
+/* ── TOAST ── */
+.toast{background:var(--primary);color:#fff;border-radius:var(--r2)}
+
+/* ── HEADER ── */
+.app-header{
+  position:sticky;top:0;z-index:200;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  padding:0 28px;min-height:70px;
+  background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e40af 100%);
+  box-shadow:0 4px 24px rgba(30,27,75,.45);
+}
+[data-theme=dark] .app-header{background:linear-gradient(135deg,#0d1117,#161b27)}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-icon{width:44px;height:44px;border-radius:var(--r2);background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff}
+.brand h1{font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:-.02em}
+.brand p{font-size:.75rem;color:rgba(255,255,255,.55);margin-top:1px}
+.hctrls{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.search-wrap{position:relative;display:flex;align-items:center}
+.search-ico{position:absolute;left:12px;color:rgba(255,255,255,.45);font-size:.85rem;pointer-events:none}
+.search-inp{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:var(--pill);color:#fff;padding:7px 34px 7px 34px;width:240px;font-size:.85rem;outline:none;transition:.2s}
+.search-inp::placeholder{color:rgba(255,255,255,.4)}
+.search-inp:focus{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5);width:290px}
+.search-clr{position:absolute;right:10px;background:none;border:none;color:rgba(255,255,255,.45);cursor:pointer;font-size:.95rem;padding:2px}
+.search-clr:hover{color:#fff}
+.hbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:var(--pill);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#e2e8f0;font-size:.83rem;cursor:pointer;transition:.2s}
+.hbtn:hover{background:rgba(255,255,255,.2);color:#fff}
+.hbtn-add{background:#fff;border:none;color:#312e81;font-weight:700;font-size:.85rem;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.hbtn-add:hover{background:#e0e7ff;transform:translateY(-1px)}
+</style>
+<style>
+/* ── MAIN ── */
+.app-main{max-width:1400px;margin:0 auto;padding:26px 22px 80px}
+
+/* ── STATS ── */
+.stats-bar{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:26px}
+.stat-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border-radius:var(--pill);background:var(--surface);border:1px solid var(--border);font-size:.8rem;font-weight:600;color:var(--txt2);box-shadow:var(--shd)}
+.stat-chip i{color:var(--primary);font-size:.85rem}
+.stat-chip span{color:var(--txt);font-size:.9rem}
+
+/* ── GRID ── */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;margin-bottom:36px}
+
+/* ── CARD ── */
+.person-card{background:var(--surface);border-radius:var(--r);padding:22px;border:1px solid var(--border);box-shadow:var(--shd);cursor:pointer;transition:transform .22s,box-shadow .22s,border-color .22s;position:relative;overflow:hidden;animation:cIn .4s ease both}
+.person-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--accent));opacity:0;transition:opacity .2s}
+.person-card:hover{transform:translateY(-5px);box-shadow:var(--pshd);border-color:var(--primary)}
+.person-card:hover::before{opacity:1}
+@keyframes cIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.card-top{display:flex;align-items:flex-start;gap:13px;margin-bottom:13px}
+.c-avatar{width:54px;height:54px;border-radius:var(--r2);flex-shrink:0;background:linear-gradient(135deg,#e0e7ff,#c7d2fe);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.2rem;color:#4f46e5}
+[data-theme=dark] .c-avatar{background:linear-gradient(135deg,#312e81,#4338ca);color:#c7d2fe}
+.c-info{flex:1;min-width:0}
+.c-name{font-weight:700;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-company{font-size:.8rem;color:var(--txt2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-visa{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:var(--pill);background:#eef2ff;color:#4338ca;margin-top:5px;display:inline-block}
+[data-theme=dark] .c-visa{background:#312e81;color:#a5b4fc}
+.c-meta{display:flex;flex-wrap:wrap;gap:5px 12px;font-size:.78rem;color:var(--txt2)}
+.c-meta span{display:flex;align-items:center;gap:4px}
+.c-meta i{color:var(--txt3)}
+.c-docs{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
+.dpill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:var(--pill);font-size:.7rem;font-weight:700;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;text-decoration:none;transition:.2s}
+.dpill:hover{background:#dcfce7}
+.dpill.dl{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.dpill.dl:hover{background:#dbeafe}
+.dpill.none{opacity:.38;cursor:default;pointer-events:none}
+.c-arrow{position:absolute;bottom:14px;right:16px;color:var(--txt3);font-size:.75rem}
+.c-edit-btns{position:absolute;top:12px;right:12px;display:flex;gap:5px;opacity:0;transition:opacity .2s}
+.person-card:hover .c-edit-btns{opacity:1}
+.ce-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--pill);padding:3px 9px;font-size:.7rem;font-weight:600;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:4px}
+.ce-btn.edit{color:var(--primary)}
+.ce-btn.edit:hover{background:#eef2ff}
+.ce-btn.del{color:var(--danger)}
+.ce-btn.del:hover{background:#fef2f2}
+</style>
+<style>
+/* ── PROFILE PANEL ── */
+.profile-panel{display:none;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--pshd);overflow:hidden;margin-top:6px;animation:pIn .3s ease}
+.profile-panel.open{display:block}
+@keyframes pIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.ptopbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.btn-back{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:var(--pill);padding:6px 14px;font-size:.82rem;color:var(--txt2);cursor:pointer;transition:.2s}
+.btn-back:hover{background:var(--border);color:var(--txt)}
+.pacts{display:flex;gap:7px}
+.pact{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:var(--pill);padding:6px 14px;font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s}
+.pact.edit{background:#eef2ff;color:#4338ca}
+.pact.edit:hover{background:#c7d2fe}
+.pact.del{background:#fef2f2;color:#b91c1c}
+.pact.del:hover{background:#fecaca}
+
+/* Hero */
+.phero{display:flex;align-items:flex-start;gap:22px;flex-wrap:wrap;padding:26px 30px 22px;background:linear-gradient(135deg,#1e1b4b,#312e81 60%,#1e40af)}
+[data-theme=dark] .phero{background:linear-gradient(135deg,#0d1117,#161b27)}
+.h-avatar{width:76px;height:76px;border-radius:var(--r2);background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.9rem;color:#fff;flex-shrink:0;border:2px solid rgba(255,255,255,.22)}
+.h-info{flex:1}
+.h-info h2{font-size:1.9rem;font-weight:800;color:#fff;letter-spacing:-.03em;margin-bottom:5px}
+.h-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px;color:rgba(255,255,255,.72);font-size:.85rem}
+.msep{color:rgba(255,255,255,.28)}
+.visa-b{background:rgba(255,255,255,.18);color:#fff;padding:2px 11px;border-radius:var(--pill);font-size:.72rem;font-weight:700;border:1px solid rgba(255,255,255,.22)}
+.h-dpills{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.hdpill{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:var(--pill);font-size:.78rem;font-weight:600;text-decoration:none;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);transition:.2s;backdrop-filter:blur(6px)}
+.hdpill:hover{background:rgba(255,255,255,.24);color:#fff}
+.hdpill.nolink{opacity:.4;cursor:not-allowed;pointer-events:none}
+
+/* Tabs */
+.ptabs{display:flex;flex-wrap:wrap;gap:3px;padding:13px 22px 0;border-bottom:1px solid var(--border);background:var(--surface2)}
+.tab-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border:none;border-radius:var(--pill) var(--pill) 0 0;background:transparent;color:var(--txt2);font-size:.82rem;font-weight:500;cursor:pointer;transition:.2s;position:relative;bottom:-1px}
+.tab-btn:hover{background:var(--border);color:var(--txt)}
+.tab-btn.active{background:var(--surface);color:var(--primary);font-weight:700;border:1px solid var(--border);border-bottom-color:var(--surface)}
+.tab-body{display:none;padding:26px 30px 34px;animation:fadeIn .22s ease}
+.tab-body.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px 26px}
+.info-item{padding:10px 0;border-bottom:1px dashed var(--border)}
+.i-label{font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);margin-bottom:3px}
+.i-value{font-size:.92rem;font-weight:500;color:var(--txt);word-break:break-word;line-height:1.45}
+.i-value.sm{font-size:.83rem;font-weight:400}
+
+/* References */
+.ref-card{background:var(--surface2);border-radius:var(--r2);border:1px solid var(--border);border-left:4px solid var(--primary);padding:13px 16px;margin-bottom:9px}
+.ref-name{font-weight:700;font-size:.97rem;margin-bottom:5px}
+.ref-meta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.8rem;color:var(--txt2)}
+.ref-meta span{display:flex;align-items:center;gap:4px}
+.ref-meta a{color:var(--primary);text-decoration:none}
+.ref-meta a:hover{text-decoration:underline}
+
+/* Doc links */
+.doc-link{display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border-radius:var(--r2);font-size:.87rem;font-weight:600;text-decoration:none;border:1px solid var(--border);background:var(--surface2);color:var(--txt);margin-right:11px;margin-bottom:9px;transition:.2s}
+.doc-link:hover{border-color:var(--primary);color:var(--primary);background:#eef2ff}
+.doc-link.disabled{opacity:.38;cursor:not-allowed;pointer-events:none}
+.doc-link .sub{font-size:.68rem;font-weight:400;color:var(--txt2)}
+.srow{display:flex;flex-wrap:wrap;gap:9px}
+.schip{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--pill);font-size:.83rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);color:var(--txt);text-decoration:none;transition:.2s}
+.schip:hover{background:var(--border);border-color:var(--primary);color:var(--primary)}
+.sec-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);margin:22px 0 12px;display:flex;align-items:center;gap:8px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+</style>
+<style>
+/* ── MODAL ── */
+.modal-content{background:var(--surface);color:var(--txt);border:1px solid var(--border);border-radius:var(--r)}
+.modal-header,.modal-footer{border-color:var(--border)}
+.modal-title{font-weight:700}
+[data-theme=dark] .btn-close{filter:invert(1) brightness(2)}
+.modal-body{max-height:74vh;overflow-y:auto}
+.fsec{margin-bottom:26px}
+.fsec-hd{font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--primary);padding:7px 0 9px;border-bottom:2px solid var(--primary);margin-bottom:16px;display:flex;align-items:center;gap:7px}
+.form-control,.form-select{background:var(--surface2);border:1px solid var(--border);color:var(--txt);border-radius:var(--r3);font-size:.88rem}
+.form-control:focus{background:var(--surface2);color:var(--txt);border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+.form-label{font-size:.8rem;font-weight:600;color:var(--txt2);margin-bottom:4px}
+.form-text{font-size:.73rem;color:var(--txt3)}
+.input-group-text{background:var(--surface2);border-color:var(--border);color:var(--txt2)}
+.req{color:var(--danger)}
+.btn-save{background:var(--primary);border:none;color:#fff;padding:8px 22px;border-radius:var(--pill);font-weight:700;font-size:.88rem;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-save:hover{background:var(--primary2)}
+/* ── EMPTY ── */
+.empty{grid-column:1/-1;text-align:center;padding:54px 20px;color:var(--txt2)}
+.empty i{font-size:2.8rem;color:var(--txt3);display:block;margin-bottom:10px}
+/* ── FOOTER ── */
+.app-footer{text-align:center;padding:18px;font-size:.76rem;color:var(--txt3);border-top:1px solid var(--border)}
+/* ── SKELETON ── */
+.skel{background:linear-gradient(90deg,var(--border) 25%,var(--surface2) 50%,var(--border) 75%);background-size:200% 100%;animation:shim 1.4s infinite;border-radius:var(--r3)}
+@keyframes shim{from{background-position:200% 0}to{background-position:-200% 0}}
+.skel-card{background:var(--surface);border-radius:var(--r);padding:22px;border:1px solid var(--border);height:170px}
+.sl{height:13px;margin-bottom:9px}
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .app-header{padding:11px 14px;min-height:auto}
+  .search-inp{width:100%}.search-inp:focus{width:100%}
+  .hctrls{width:100%;justify-content:space-between}
+  .app-main{padding:16px 12px 60px}
+  .phero{padding:18px 16px}
+  .h-info h2{font-size:1.4rem}
+  .tab-body{padding:18px 14px 26px}
+  .info-grid{grid-template-columns:1fr}
+  .ptopbar{padding:10px 14px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999">
+  <div id="appToast" class="toast align-items-center border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMsg"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-icon"><i class="bi bi-buildings-fill"></i></div>
+    <div>
+      <h1>Team Profile Hub</h1>
+      <p>US IT Consultants &nbsp;·&nbsp; <span id="memberCount">0</span> members</p>
+    </div>
+  </div>
+  <div class="hctrls">
+    <div class="search-wrap">
+      <i class="bi bi-search search-ico"></i>
+      <input type="text" id="searchInput" class="search-inp" placeholder="Search name, company, visa, tech…" autocomplete="off"/>
+      <button id="resetSearch" class="search-clr" title="Clear"><i class="bi bi-x"></i></button>
+    </div>
+    <button class="hbtn" id="themeBtn"><i class="bi bi-moon-stars" id="themeIco"></i><span id="themeLbl">Dark</span></button>
+    <button class="hbtn hbtn-add" id="addBtn"><i class="bi bi-person-plus-fill"></i> Add Member</button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="app-main">
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-chip" id="sc0"><i class="bi bi-people-fill"></i><span>0</span> Total</div>
+    <div class="stat-chip" id="sc1"><i class="bi bi-patch-check-fill"></i><span>0</span> Citizens</div>
+    <div class="stat-chip" id="sc2"><i class="bi bi-shield-fill-check"></i><span>0</span> Green Card</div>
+    <div class="stat-chip" id="sc3"><i class="bi bi-file-earmark-person-fill"></i><span>0</span> Resumes</div>
+    <div class="stat-chip" id="sc4"><i class="bi bi-card-image"></i><span>0</span> DL Docs</div>
+  </div>
+  <div class="team-grid" id="teamGrid"></div>
+  <div class="profile-panel" id="profilePanel">
+    <div class="ptopbar">
+      <button class="btn-back" id="closePanel"><i class="bi bi-arrow-left"></i> Back</button>
+      <div class="pacts">
+        <button class="pact edit" id="editBtn"><i class="bi bi-pencil-fill"></i> Edit</button>
+        <button class="pact del" id="delBtn"><i class="bi bi-trash3-fill"></i> Delete</button>
+      </div>
+    </div>
+    <div class="phero">
+      <div class="h-avatar" id="hAvatar">NP</div>
+      <div class="h-info">
+        <h2 id="hName">—</h2>
+        <div class="h-meta">
+          <span class="visa-b" id="hVisa">—</span>
+          <span class="msep">·</span>
+          <span id="hLoc"><i class="bi bi-geo-alt-fill"></i> —</span>
+          <span class="msep">·</span>
+          <span id="hExp"><i class="bi bi-briefcase-fill"></i> —</span>
+        </div>
+        <div class="h-dpills" id="hPills"></div>
+      </div>
+    </div>
+    <div class="ptabs" id="ptabs">
+      <button class="tab-btn active" data-tab="t0"><i class="bi bi-grid-1x2-fill"></i> Overview</button>
+      <button class="tab-btn" data-tab="t1"><i class="bi bi-person-fill"></i> Personal</button>
+      <button class="tab-btn" data-tab="t2"><i class="bi bi-shield-fill-check"></i> Visa &amp; Work</button>
+      <button class="tab-btn" data-tab="t3"><i class="bi bi-briefcase-fill"></i> Professional</button>
+      <button class="tab-btn" data-tab="t4"><i class="bi bi-flag-fill"></i> US History</button>
+      <button class="tab-btn" data-tab="t5"><i class="bi bi-folder2-open"></i> Docs &amp; Links</button>
+      <button class="tab-btn" data-tab="t6"><i class="bi bi-people-fill"></i> References</button>
+    </div>
+    <div class="tab-body active" id="t0"></div>
+    <div class="tab-body" id="t1"></div>
+    <div class="tab-body" id="t2"></div>
+    <div class="tab-body" id="t3"></div>
+    <div class="tab-body" id="t4"></div>
+    <div class="tab-body" id="t5"></div>
+    <div class="tab-body" id="t6"></div>
+  </div>
+</main>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog modal-xl modal-dialog-scrollable">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title" id="modalTitle"><i class="bi bi-person-plus-fill me-2"></i>Add New Member</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+   </div>
+   <div class="modal-body">
+    <form id="profileForm" novalidate>
+     <input type="hidden" id="editId"/>
+     <!-- Personal -->
+     <div class="fsec">
+      <div class="fsec-hd"><i class="bi bi-person-fill"></i>Personal Information</div>
+      <div class="row g-3">
+       <div class="col-md-6"><label class="form-label">Full Name <span class="req">*</span></label><input class="form-control" id="fName" required/></div>
+       <div class="col-md-6"><label class="form-label">Email <span class="req">*</span></label><input type="email" class="form-control" id="fEmail" required/></div>
+       <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" id="fPhone"/></div>
+       <div class="col-md-6"><label class="form-label">Address</label><input class="form-control" id="fAddress"/></div>
+       <div class="col-md-4"><label class="form-label">Age / DOB</label><input class="form-control" id="fAge" placeholder="e.g. 30"/></div>
+       <div class="col-md-4"><label class="form-label">Education</label><input class="form-control" id="fEducation"/></div>
+       <div class="col-md-4"><label class="form-label">DL Name (as on license)</label><input class="form-control" id="fDlName"/></div>
+       <div class="col-md-4"><label class="form-label">Marriage Date</label><input class="form-control" id="fMarriage" placeholder="e.g. 2019"/></div>
+       <div class="col-md-4"><label class="form-label">Property Owned</label><input class="form-control" id="fProperty"/></div>
+       <div class="col-md-4"><label class="form-label">SSN (last 4)</label><input class="form-control" id="fSsn" placeholder="e.g. 1234" maxlength="4"/></div>
+      </div>
+     </div>
+     <!-- Visa -->
+     <div class="fsec">
+      <div class="fsec-hd"><i class="bi bi-shield-fill-check"></i>Visa &amp; Work</div>
+      <div class="row g-3">
+       <div class="col-md-6"><label class="form-label">Visa Type</label><input class="form-control" id="fVisa"/></div>
+       <div class="col-md-6"><label class="form-label">Work Authorization</label><input class="form-control" id="fAuth"/></div>
+       <div class="col-md-4"><label class="form-label">Green Card Date</label><input class="form-control" id="fGcDate" placeholder="e.g. 2018"/></div>
+       <div class="col-md-4"><label class="form-label">How Got Green Card</label><input class="form-control" id="fGcHow"/></div>
+       <div class="col-md-4"><label class="form-label">W2 / C2C Preference</label><input class="form-control" id="fW2"/></div>
+      </div>
+     </div>
+     <!-- Professional -->
+     <div class="fsec">
+      <div class="fsec-hd"><i class="bi bi-briefcase-fill"></i>Professional</div>
+      <div class="row g-3">
+       <div class="col-md-6"><label class="form-label">Last Company</label><input class="form-control" id="fLastCo"/></div>
+       <div class="col-md-3"><label class="form-label">Total Experience</label><input class="form-control" id="fTotalExp" placeholder="e.g. 10+ years"/></div>
+       <div class="col-md-3"><label class="form-label">Total Companies</label><input type="number" class="form-control" id="fTotalCo" min="0"/></div>
+       <div class="col-md-6"><label class="form-label">Last Project Title</label><input class="form-control" id="fProject"/></div>
+       <div class="col-md-6"><label class="form-label">Tech Stack</label><input class="form-control" id="fTech" placeholder="Python, AWS, React…"/></div>
+       <div class="col-12"><label class="form-label">Project Overview</label><textarea class="form-control" id="fOverview" rows="3"></textarea></div>
+      </div>
+     </div>
+     <!-- US History -->
+     <div class="fsec">
+      <div class="fsec-hd"><i class="bi bi-flag-fill"></i>US History</div>
+      <div class="row g-3">
+       <div class="col-md-4"><label class="form-label">Came to US Date</label><input class="form-control" id="fCameUS" placeholder="e.g. 2016"/></div>
+       <div class="col-md-4"><label class="form-label">Current Location</label><input class="form-control" id="fCurLoc"/></div>
+       <div class="col-md-4"><label class="form-label">Places Lived</label><input class="form-control" id="fPlaces" placeholder="Chicago, IL · Austin, TX"/></div>
+       <div class="col-12"><label class="form-label">First 5 Years – How Got Visa</label><input class="form-control" id="fFirst5" placeholder="F1 → OPT → H1-B"/></div>
+      </div>
+     </div>
+     <!-- Docs & Links -->
+     <div class="fsec">
+      <div class="fsec-hd"><i class="bi bi-folder2-open"></i>Documents &amp; Links</div>
+      <div class="row g-3">
+       <div class="col-md-6">
+        <label class="form-label"><i class="bi bi-file-earmark-person-fill text-primary me-1"></i>Master Resume – Google Drive Link</label>
+        <div class="input-group"><span class="input-group-text"><i class="bi bi-google"></i></span><input type="url" class="form-control" id="fResumeLink" placeholder="https://drive.google.com/file/d/…"/></div>
+        <div class="form-text">Paste shareable Drive URL — anyone with link can view</div>
+       </div>
+       <div class="col-md-6">
+        <label class="form-label"><i class="bi bi-card-image text-success me-1"></i>Driver's License – Google Drive Link</label>
+        <div class="input-group"><span class="input-group-text"><i class="bi bi-google"></i></span><input type="url" class="form-control" id="fDlLink" placeholder="https://drive.google.com/file/d/…"/></div>
+        <div class="form-text">Paste shareable Drive URL for the DL scan</div>
+       </div>
+       <div class="col-md-4"><label class="form-label"><i class="bi bi-github me-1"></i>GitHub URL</label><input type="url" class="form-control" id="fGithub"/></div>
+       <div class="col-md-4"><label class="form-label"><i class="bi bi-linkedin me-1"></i>LinkedIn URL</label><input type="url" class="form-control" id="fLinkedin"/></div>
+       <div class="col-md-4"><label class="form-label"><i class="bi bi-globe2 me-1"></i>Portfolio URL</label><input type="url" class="form-control" id="fPortfolio"/></div>
+      </div>
+     </div>
+     <!-- References -->
+     <div class="fsec">
+      <div class="fsec-hd"><i class="bi bi-people-fill"></i>References</div>
+      <div class="row g-3">
+       <div class="col-12">
+        <label class="form-label">One per line — format: <code>Name | Designation | Company | Email | Phone | LinkedIn</code></label>
+        <textarea class="form-control" id="fRefs" rows="4" placeholder="Vito Mantese | Team Lead | Centene Corporation | email@example.com | +1 314-000-0000 | linkedin.com/in/vito"></textarea>
+       </div>
+      </div>
+     </div>
+    </form>
+   </div>
+   <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="button" class="btn-save" id="saveBtn">
+     <span id="saveSpin" class="spinner-border spinner-border-sm d-none me-1"></span>
+     <i class="bi bi-floppy-fill me-1"></i> Save Member
+    </button>
+   </div>
+  </div>
+ </div>
+</div>
+
+<footer class="app-footer"><i class="bi bi-shield-lock-fill"></i> Confidential · Internal Use Only</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+'use strict';
+// ═══ FULL DATA ═══════════════════════════════════════════════════════
+const DEFAULT_DATA = [
+{id:1,name:'Nirav Patel',gmail:'Niravp1216@gmail.com',phone:'601-488-2998',
+ address:'905 Waters Edge, Brandon, Mississippi 39047',age:'29',
+ education:'B.E. in Computer Science',dlName:'Nirav Patel',
+ marriageDate:'Not provided',propertyOwned:'Not provided',ssnLast4:'1806',
+ visaType:'Citizenship (Naturalized)',workAuth:'U.S. Citizen',
+ gcDate:'2018',gcHow:'Employer-sponsored',w2:'W2: $50–$85/hr, C2C: $50–$85/hr',
+ lastCo:'Centene Corporation',totalExp:'10+ years',totalCo:3,
+ lastProject:'Healthcare Cloud Migration & AI Integration',
+ overview:'Led cloud migration projects and AI-driven workflows for healthcare claims and member management, ensuring HIPAA compliance and high availability.',
+ techStack:'Python, AWS, Terraform, Docker, React, PostgreSQL',
+ cameUS:'2016',first5:'F1 → OPT → H1-B → Green Card',
+ places:'Brandon, MS; previously in other US cities',curLoc:'Brandon, MS',
+ resumeLink:'',dlLink:'',
+ github:'https://github.com/niravp1216-tech',
+ linkedin:'https://www.linkedin.com/in/coder-48ba46251/',
+ portfolio:'https://ubiquitous-starburst-4b7914.netlify.app/',
+ refs:[
+  {name:'Vito Mantese',desig:'Team Lead',co:'Centene Corporation',email:'Not Available',phone:'+1 314-399-9771',li:'linkedin.com/in/vito-mantese-3a7264140'},
+  {name:'Amol Basargekar',desig:'Group Product Manager',co:'IntegriChain',email:'amol.basargekar@gmail.com, abasargekar@integrichain.com',phone:'+1 954-555-0636',li:'linkedin.com/in/amol-basargekar-8b66aa8'},
+  {name:'Mrudula Vijayanarasimha',desig:'Sr. Software Engineer | AI Engineer',co:'Centene Corporation',email:'mrudula.vijayanarasimha@centene.com, mrudula.v1712@gmail.com',phone:'+1 585-406-2642',li:'linkedin.com/in/mrudulavijayanarasimha/'}
+ ]
+},
+{id:2,name:'Dhaval Patel',gmail:'dhavalkumawat76@gmail.com',phone:'+1 (980)-215-9384',
+ address:'116 Mackinac Drive, Mooresville, NC 28117',age:'33',
+ education:'B.E. in Computer Engineering',dlName:'Dhaval Patel',
+ marriageDate:'2019',propertyOwned:'Not provided',ssnLast4:'6747',
+ visaType:'Citizenship (Naturalized)',workAuth:'U.S. Citizen',
+ gcDate:'2019',gcHow:'Marriage to U.S. citizen',w2:'W2 preferred',
+ lastCo:'NBCUniversal',totalExp:'8 years',totalCo:4,
+ lastProject:'AI-Powered Clinical Trial Platform',
+ overview:'Led development of cloud-native microservices and AI/LLM workflows for clinical data management, patient monitoring, and regulatory compliance across healthcare and media domains.',
+ techStack:'Python, FastAPI, AWS (Lambda, EKS, S3, DynamoDB), Terraform, Docker, LangChain, PyTorch, PostgreSQL, MongoDB, Redis',
+ cameUS:'2017',first5:'Marriage-based Green Card in 2019, Citizenship in 2025',
+ places:'Mooresville, NC; previously in other US cities',curLoc:'Mooresville, NC',
+ resumeLink:'',dlLink:'',
+ github:'https://github.com/niravp1216-tech',
+ linkedin:'https://www.linkedin.com/in/ai-expert-coder',
+ portfolio:'https://dhavalpatel.tech',refs:[]
+},
+{id:3,name:'Foram Patel',gmail:'foram.patel4932@gmail.com',phone:'(561) 342-1074',
+ address:'Florida',age:'34',
+ education:'B.S./M.S. in Computer Science',dlName:'Foram Patel',
+ marriageDate:'Not provided',propertyOwned:'Not provided',ssnLast4:'N/A',
+ visaType:'Citizenship',workAuth:'U.S. Citizen',
+ gcDate:'Not provided',gcHow:'Not provided',w2:'Not provided',
+ lastCo:'McKinsey & Company',totalExp:'11+ years',totalCo:4,
+ lastProject:'AI-Driven Healthcare RCM Platform',
+ overview:'Architected agentic AI and ETL pipelines for healthcare Revenue Cycle Management, cutting claim resolution time from hours to minutes using multi-agent LLM workflows and RAG systems.',
+ techStack:'Python, React, NestJS, FastAPI, Node.js, AWS (Lambda, RDS, S3, Cognito), DynamoDB, Kubernetes, Terraform, LangChain, pgvector, Docker, Grafana, GitHub Actions',
+ cameUS:'Not provided',first5:'Not provided',
+ places:'Not provided',curLoc:'Florida',
+ resumeLink:'',dlLink:'',
+ github:'https://github.com/foram-p',
+ linkedin:'https://www.linkedin.com/in/forampatel',
+ portfolio:'https://forampatel.dev',refs:[]
+},
+{id:4,name:'Rishabh Tiwari',gmail:'Rishabhstiwari1996@gmail.com',phone:'Not provided',
+ address:'Not provided',age:'Not provided',
+ education:'B.Tech in Computer Science & Engineering, Rajasthan Technical University',dlName:'Rishabh Tiwari',
+ marriageDate:'Not provided',propertyOwned:'Not provided',ssnLast4:'N/A',
+ visaType:'Not specified',workAuth:'Not specified',
+ gcDate:'Not provided',gcHow:'Not provided',w2:'Not provided',
+ lastCo:'WCG',totalExp:'9+ years',totalCo:5,
+ lastProject:'AI-Powered Anomaly Detection & Remediation (Ankura)',
+ overview:'Architected secure multi-cloud infrastructure for an AI-powered anomaly detection platform using Terraform, deploying containerised microservices on AKS and OpenShift with automated blue-green deployment pipelines.',
+ techStack:'AWS (EC2, EKS, Lambda, S3, RDS, IAM, CloudWatch), Azure (AKS, CosmosDB, Blob Storage), GCP, Kubernetes, Helm, Terraform, Bicep, Ansible, Jenkins, GitHub Actions, ArgoCD, Datadog, Prometheus, Grafana, ELK, Python, Bash, PowerShell, PostgreSQL, MySQL, MongoDB, Redis',
+ cameUS:'Not provided',first5:'Not provided',
+ places:'Not provided',curLoc:'Not provided',
+ resumeLink:'',dlLink:'',
+ github:'https://github.com/',linkedin:'https://www.linkedin.com/in/',portfolio:'',refs:[]
+},
+{id:5,name:'Ritu',gmail:'Not provided',phone:'Not provided',
+ address:'Not provided',age:'Not provided',
+ education:'Not specified',dlName:'Ritu',
+ marriageDate:'Not provided',propertyOwned:'Not provided',ssnLast4:'N/A',
+ visaType:'Not specified',workAuth:'Not specified',
+ gcDate:'Not provided',gcHow:'Not provided',w2:'Not provided',
+ lastCo:'Centene',totalExp:'10.5 years',totalCo:5,
+ lastProject:'AI Platform Management & API Gateway',
+ overview:'Leading development of enterprise and healthcare AI & Generative AI platforms, including a centralized API management platform. Designed secure serverless AWS workflows for AI/ML pipelines, automated ETL, and deployed CI/CD for high availability.',
+ techStack:'Python, Go, FastAPI, Flask, Django, AWS (Lambda, S3, API Gateway, CloudWatch), GCP (GKE, Cloud Storage, Batch), Azure (AKS), Kubernetes, Docker, LangChain, FAISS, OpenSearch, Elasticsearch, Prometheus, Grafana, ELK, CI/CD (Jenkins, GitHub Actions), OAuth 2.0, Okta, HIPAA, GDPR, CCPA, Kafka, Airflow, Databricks, Snowflake, Delta Lake',
+ cameUS:'Not provided',first5:'Not provided',
+ places:'Not provided',curLoc:'Not provided',
+ resumeLink:'',dlLink:'',
+ github:'https://github.com/',linkedin:'https://www.linkedin.com/in/',portfolio:'',refs:[]
+},
+{id:6,name:'Hridesh Sharma',gmail:'Not provided',phone:'Not provided',
+ address:'Not provided',age:'Not provided',
+ education:'B.Tech in Computer Science',dlName:'Hridesh Sharma',
+ marriageDate:'Not provided',propertyOwned:'Not provided',ssnLast4:'N/A',
+ visaType:'Not specified',workAuth:'Not specified',
+ gcDate:'Not provided',gcHow:'Not provided',w2:'Not provided',
+ lastCo:'Brudite Private Limited',totalExp:'6+ years',totalCo:6,
+ lastProject:'AI-Powered Slack Workflow Automation',
+ overview:'Led design and development of custom Slack applications with OAuth 2.0, RBAC, interactive components, and AI-powered workflows integrating GPT-4 and Claude via LangChain and MCP servers, connecting Slack with Salesforce, Jira, and GitHub, achieving 99.9% bot uptime and reducing manual review time by 60%.',
+ techStack:'Python, Node.js, Go, FastAPI, Flask, Slack Bolt SDK, Slack Web API, Events API, Webhooks, OAuth 2.0, LangChain, GPT-4, Claude, Llama, RAG, MCP Servers, Vector DB (Pinecone, pgvector), PostgreSQL, MongoDB, AWS (Lambda, S3, Step Functions), GCP (Cloud Run, Vertex AI), Terraform, Salesforce CRM, Jira, Confluence, GitHub',
+ cameUS:'Not provided',first5:'Not provided',
+ places:'Not provided',curLoc:'Not provided',
+ resumeLink:'',dlLink:'',
+ github:'',linkedin:'',portfolio:'',refs:[]
+}
+];
+</script>
+<script>
+// ═══ STATE & STORAGE ══════════════════════════════════════════════════
+const LS = 'tph_v2';
+let data = [], cur = null, bsModal, bsToast;
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS)||'[]');
+    if (Array.isArray(s) && s.length) {
+      data = s;
+      // merge any new default members missing from saved data
+      const ids = new Set(data.map(m=>m.id));
+      DEFAULT_DATA.forEach(d=>{ if(!ids.has(d.id)) data.push(d); });
+      save(); return;
+    }
+  } catch(e){}
+  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  save();
+}
+function save() { localStorage.setItem(LS, JSON.stringify(data)); }
+
+// ═══ INIT ═════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', ()=>{
+  bsModal = new bootstrap.Modal(document.getElementById('profileModal'));
+  bsToast = new bootstrap.Toast(document.getElementById('appToast'),{delay:2800});
+  load();
+  applyTheme(localStorage.getItem('tph_theme')==='dark');
+  renderCards();
+  updateStats();
+  bindAll();
+});
+
+// ═══ HELPERS ═════════════════════════════════════════════════════════
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function initials(n){ return String(n).split(' ').filter(Boolean).slice(0,2).map(x=>x[0].toUpperCase()).join(''); }
+function toast(msg,type='ok'){
+  const t=document.getElementById('appToast'),m=document.getElementById('toastMsg');
+  if(!t||!m)return;
+  m.textContent=msg;
+  t.style.background=type==='warn'?'#f59e0b':type==='err'?'#ef4444':type==='info'?'#06b6d4':'#4f46e5';
+  bsToast.show();
+}
+
+// ═══ STATS ════════════════════════════════════════════════════════════
+function updateStats(){
+  const sc=(id,v)=>{ const e=document.getElementById(id); if(e) e.querySelector('span').textContent=v; };
+  sc('sc0', data.length);
+  sc('sc1', data.filter(m=>/citizen/i.test(m.visaType)).length);
+  sc('sc2', data.filter(m=>/green.?card/i.test(m.visaType)).length);
+  sc('sc3', data.filter(m=>!!m.resumeLink).length);
+  sc('sc4', data.filter(m=>!!m.dlLink).length);
+  document.getElementById('memberCount').textContent = data.length;
+}
+
+// ═══ RENDER CARDS ════════════════════════════════════════════════════
+function renderCards(q=''){
+  const grid=document.getElementById('teamGrid');
+  q=q.trim().toLowerCase();
+  const list=data.filter(p=>!q||[p.name,p.gmail,p.lastCo,p.visaType,p.curLoc,p.techStack].some(v=>(v||'').toLowerCase().includes(q)));
+  document.getElementById('memberCount').textContent=list.length;
+  if(!list.length){
+    grid.innerHTML=`<div class="empty"><i class="bi bi-search"></i><p>No members match <strong>"${esc(q)}"</strong></p></div>`;
+    return;
+  }
+  grid.innerHTML=list.map((p,i)=>`
+    <div class="person-card" data-id="${p.id}" style="animation-delay:${i*.04}s" tabindex="0" role="button" aria-label="View ${esc(p.name)}">
+      <div class="c-edit-btns">
+        <button class="ce-btn edit" data-id="${p.id}" data-act="edit" onclick="event.stopPropagation()"><i class="bi bi-pencil-fill"></i>Edit</button>
+        <button class="ce-btn del"  data-id="${p.id}" data-act="del"  onclick="event.stopPropagation()"><i class="bi bi-trash3-fill"></i>Del</button>
+      </div>
+      <div class="card-top">
+        <div class="c-avatar">${initials(p.name)}</div>
+        <div class="c-info">
+          <div class="c-name">${esc(p.name)}</div>
+          <div class="c-company"><i class="bi bi-building me-1"></i>${esc(p.lastCo||'—')}</div>
+          <span class="c-visa">${esc(p.visaType||'N/A')}</span>
+        </div>
+      </div>
+      <div class="c-meta">
+        ${p.gmail&&p.gmail!=='Not provided'?`<span><i class="bi bi-envelope"></i>${esc(p.gmail)}</span>`:''}
+        ${p.phone&&p.phone!=='Not provided'?`<span><i class="bi bi-phone"></i>${esc(p.phone)}</span>`:''}
+        ${p.curLoc&&p.curLoc!=='Not provided'?`<span><i class="bi bi-geo-alt"></i>${esc(p.curLoc)}</span>`:''}
+        ${p.totalExp?`<span><i class="bi bi-briefcase"></i>${esc(p.totalExp)}</span>`:''}
+      </div>
+      <div class="c-docs">
+        ${p.resumeLink?`<a href="${esc(p.resumeLink)}" target="_blank" rel="noopener" class="dpill" onclick="event.stopPropagation()"><i class="bi bi-file-earmark-person-fill"></i>Resume</a>`:`<span class="dpill none"><i class="bi bi-file-earmark-person"></i>No Resume</span>`}
+        ${p.dlLink?`<a href="${esc(p.dlLink)}" target="_blank" rel="noopener" class="dpill dl" onclick="event.stopPropagation()"><i class="bi bi-card-image"></i>DL Scan</a>`:`<span class="dpill dl none"><i class="bi bi-card-image"></i>No DL</span>`}
+      </div>
+      <span class="c-arrow"><i class="bi bi-arrow-right-circle"></i> view</span>
+    </div>`).join('');
+
+  grid.querySelectorAll('.person-card').forEach(c=>{
+    c.addEventListener('click', ()=>openProfile(+c.dataset.id));
+    c.addEventListener('keydown', e=>{ if(e.key==='Enter') openProfile(+c.dataset.id); });
+    c.querySelectorAll('.ce-btn').forEach(b=>b.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(b.dataset.act==='edit') { const m=data.find(x=>x.id===+b.dataset.id); if(m) openModal(m); }
+      else confirmDelete(+b.dataset.id);
+    }));
+  });
+}
+</script>
+<script>
+// ═══ PROFILE PANEL ═══════════════════════════════════════════════════
+function openProfile(id){
+  const p=data.find(m=>m.id===id); if(!p)return;
+  cur=p;
+  const panel=document.getElementById('profilePanel');
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+
+  document.getElementById('hAvatar').textContent=initials(p.name);
+  document.getElementById('hName').textContent=p.name;
+  document.getElementById('hVisa').textContent=p.visaType||'N/A';
+  document.getElementById('hLoc').innerHTML=`<i class="bi bi-geo-alt-fill"></i> ${esc(p.curLoc||'—')}`;
+  document.getElementById('hExp').innerHTML=`<i class="bi bi-briefcase-fill"></i> ${esc(p.totalExp||'—')}`;
+
+  // Hero pills
+  const pills=[
+    {l:'Resume',i:'bi-file-earmark-person-fill',url:p.resumeLink},
+    {l:"Driver's License",i:'bi-card-image',url:p.dlLink},
+    {l:'LinkedIn',i:'bi-linkedin',url:p.linkedin},
+    {l:'GitHub',i:'bi-github',url:p.github},
+    {l:'Portfolio',i:'bi-globe2',url:p.portfolio},
+  ];
+  document.getElementById('hPills').innerHTML=pills.filter(x=>x.url&&x.url.startsWith('http')).map(x=>
+    `<a href="${esc(x.url)}" target="_blank" rel="noopener" class="hdpill"><i class="bi ${x.i}"></i>${x.l}</a>`).join('');
+
+  // Tabs
+  activateTab('t0');
+  renderT0(p); renderT1(p); renderT2(p); renderT3(p); renderT4(p); renderT5(p); renderT6(p);
+}
+function closeProfile(){
+  document.getElementById('profilePanel').classList.remove('open');
+  cur=null;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function activateTab(id){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
+  document.querySelectorAll('.tab-body').forEach(b=>b.classList.toggle('active',b.id===id));
+}
+
+// ── Tab renderers ──────────────────────────────────────────────────
+function ig(fields){ // info grid
+  return `<div class="info-grid">${fields.map(f=>`
+    <div class="info-item">
+      <div class="i-label">${f.l}</div>
+      <div class="i-value${f.sm?' sm':''}">${esc(f.v||'—')}</div>
+    </div>`).join('')}</div>`;
+}
+function renderT0(p){ document.getElementById('t0').innerHTML=ig([
+  {l:'Full Name',v:p.name},{l:'Email',v:p.gmail},{l:'Phone',v:p.phone},
+  {l:'Current Location',v:p.curLoc},{l:'Visa Type',v:p.visaType},
+  {l:'Work Authorization',v:p.workAuth},{l:'Total Experience',v:p.totalExp},
+  {l:'Last Company',v:p.lastCo},{l:'Last Project',v:p.lastProject},
+  {l:'Tech Stack',v:p.techStack,sm:true}
+]);}
+function renderT1(p){ document.getElementById('t1').innerHTML=ig([
+  {l:'Full Name (as per DL)',v:p.dlName},{l:'Age / DOB',v:p.age},
+  {l:'Phone',v:p.phone},{l:'Email',v:p.gmail},{l:'Address',v:p.address},
+  {l:'Education',v:p.education},{l:'Marriage Date',v:p.marriageDate},
+  {l:'Property Owned',v:p.propertyOwned},
+  {l:'SSN (last 4)',v:p.ssnLast4&&p.ssnLast4!=='N/A'?`***-**-${p.ssnLast4}`:p.ssnLast4}
+]);}
+function renderT2(p){ document.getElementById('t2').innerHTML=ig([
+  {l:'Visa Type',v:p.visaType},{l:'Work Authorization',v:p.workAuth},
+  {l:'Green Card Date',v:p.gcDate},{l:'How Got Green Card',v:p.gcHow},
+  {l:'W2 / C2C Preference',v:p.w2},
+  {l:'SSN (last 4)',v:p.ssnLast4&&p.ssnLast4!=='N/A'?`***-**-${p.ssnLast4}`:p.ssnLast4}
+]);}
+function renderT3(p){ document.getElementById('t3').innerHTML=ig([
+  {l:'Last Company',v:p.lastCo},{l:'Last Project',v:p.lastProject},
+  {l:'Project Overview',v:p.overview,sm:true},{l:'Tech Stack',v:p.techStack,sm:true},
+  {l:'Total Experience',v:p.totalExp},{l:'Total Companies Worked',v:p.totalCo}
+]);}
+function renderT4(p){ document.getElementById('t4').innerHTML=ig([
+  {l:'Came to US Date',v:p.cameUS},{l:'First 5 Years – Visa Path',v:p.first5,sm:true},
+  {l:'Places Lived',v:p.places},{l:'Current Location',v:p.curLoc},
+  {l:'Visa Type',v:p.visaType},{l:'Green Card Status',v:p.gcDate||'In process'}
+]);}
+function renderT5(p){
+  const hasR=!!p.resumeLink, hasDL=!!p.dlLink;
+  document.getElementById('t5').innerHTML=`
+    <div class="sec-title"><i class="bi bi-folder2-open"></i> Documents</div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:26px">
+      <div style="flex:1;min-width:210px">
+        <div style="font-weight:700;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:7px"><i class="bi bi-file-earmark-person-fill" style="color:var(--primary)"></i>Master Resume</div>
+        ${hasR?`<a href="${esc(p.resumeLink)}" target="_blank" rel="noopener" class="doc-link"><i class="bi bi-google" style="color:#4285F4"></i><div><div>Open Resume</div><div class="sub">Google Drive ↗</div></div></a>`:`<a class="doc-link disabled"><i class="bi bi-file-earmark-x" style="color:var(--txt3)"></i><div><div>No Resume</div><div class="sub">Add Drive link via Edit</div></div></a>`}
+      </div>
+      <div style="flex:1;min-width:210px">
+        <div style="font-weight:700;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:7px"><i class="bi bi-card-image" style="color:var(--success)"></i>Driver's License</div>
+        ${hasDL?`<a href="${esc(p.dlLink)}" target="_blank" rel="noopener" class="doc-link"><i class="bi bi-google" style="color:#4285F4"></i><div><div>Open DL Scan</div><div class="sub">Google Drive ↗</div></div></a>`:`<a class="doc-link disabled"><i class="bi bi-image" style="color:var(--txt3)"></i><div><div>No DL Scan</div><div class="sub">Add Drive link via Edit</div></div></a>`}
+      </div>
+    </div>
+    <div class="sec-title"><i class="bi bi-link-45deg"></i> Social &amp; Portfolio</div>
+    <div class="srow">
+      ${p.github&&p.github.startsWith('http')?`<a href="${esc(p.github)}" target="_blank" rel="noopener" class="schip"><i class="bi bi-github"></i>GitHub</a>`:''}
+      ${p.linkedin&&p.linkedin.startsWith('http')?`<a href="${esc(p.linkedin)}" target="_blank" rel="noopener" class="schip"><i class="bi bi-linkedin"></i>LinkedIn</a>`:''}
+      ${p.portfolio&&p.portfolio.startsWith('http')?`<a href="${esc(p.portfolio)}" target="_blank" rel="noopener" class="schip"><i class="bi bi-globe2"></i>Portfolio</a>`:''}
+      ${!p.github&&!p.linkedin&&!p.portfolio?'<span style="color:var(--txt3);font-size:.85rem">No social links yet.</span>':''}
+    </div>`;
+}
+function renderT6(p){
+  const refs=Array.isArray(p.refs)?p.refs:[];
+  document.getElementById('t6').innerHTML=refs.length?refs.map(r=>`
+    <div class="ref-card">
+      <div class="ref-name">${esc(r.name||'—')}</div>
+      <div class="ref-meta">
+        ${r.desig?`<span><i class="bi bi-person-fill"></i>${esc(r.desig)}</span>`:''}
+        ${r.co?`<span><i class="bi bi-building"></i>${esc(r.co)}</span>`:''}
+        ${r.email?`<span><i class="bi bi-envelope"></i>${esc(r.email)}</span>`:''}
+        ${r.phone?`<span><i class="bi bi-phone"></i>${esc(r.phone)}</span>`:''}
+        ${r.li?`<span><i class="bi bi-linkedin"></i><a href="https://${r.li.replace(/^https?:\/\//,'')}" target="_blank" rel="noopener">${esc(r.li)}</a></span>`:''}
+      </div>
+    </div>`).join(''):`<p style="color:var(--txt2);padding:6px 0">No references added yet.</p>`;
+}
+</script>
+<script>
+// ═══ MODAL ═══════════════════════════════════════════════════════════
+function openModal(p){
+  const isEdit=!!p;
+  document.getElementById('editId').value=isEdit?p.id:'';
+  document.getElementById('modalTitle').innerHTML=isEdit?'<i class="bi bi-pencil-fill me-2"></i>Edit Member':'<i class="bi bi-person-plus-fill me-2"></i>Add New Member';
+  if(!isEdit){ document.getElementById('profileForm').reset(); bsModal.show(); return; }
+  const s=(id,v)=>{ const e=document.getElementById(id); if(e) e.value=v||''; };
+  s('fName',p.name);s('fEmail',p.gmail);s('fPhone',p.phone);s('fAddress',p.address);
+  s('fAge',p.age);s('fEducation',p.education);s('fDlName',p.dlName);
+  s('fMarriage',p.marriageDate);s('fProperty',p.propertyOwned);s('fSsn',p.ssnLast4);
+  s('fVisa',p.visaType);s('fAuth',p.workAuth);s('fGcDate',p.gcDate);
+  s('fGcHow',p.gcHow);s('fW2',p.w2);s('fLastCo',p.lastCo);
+  s('fTotalExp',p.totalExp);s('fTotalCo',p.totalCo);s('fProject',p.lastProject);
+  s('fTech',p.techStack);s('fOverview',p.overview);s('fCameUS',p.cameUS);
+  s('fCurLoc',p.curLoc);s('fPlaces',p.places);s('fFirst5',p.first5);
+  s('fResumeLink',p.resumeLink);s('fDlLink',p.dlLink);
+  s('fGithub',p.github);s('fLinkedin',p.linkedin);s('fPortfolio',p.portfolio);
+  s('fRefs',(p.refs||[]).map(r=>[r.name,r.desig,r.co,r.email,r.phone,r.li].join(' | ')).join('\n'));
+  bsModal.show();
+}
+
+function handleSave(){
+  const nameEl=document.getElementById('fName'), emailEl=document.getElementById('fEmail');
+  const name=nameEl.value.trim(), email=emailEl.value.trim();
+  if(!name){nameEl.focus();toast('Full Name is required','warn');return;}
+  if(!email){emailEl.focus();toast('Email is required','warn');return;}
+
+  const refs=document.getElementById('fRefs').value.split('\n').filter(l=>l.trim()).map(l=>{
+    const p=l.split('|').map(s=>s.trim());
+    return{name:p[0]||'',desig:p[1]||'',co:p[2]||'',email:p[3]||'',phone:p[4]||'',li:p[5]||''};
+  });
+
+  const g=id=>document.getElementById(id)?.value.trim()||'';
+  const profile={
+    name,gmail:email,phone:g('fPhone'),address:g('fAddress'),age:g('fAge'),
+    education:g('fEducation'),dlName:g('fDlName'),marriageDate:g('fMarriage'),
+    propertyOwned:g('fProperty'),ssnLast4:g('fSsn'),visaType:g('fVisa'),
+    workAuth:g('fAuth'),gcDate:g('fGcDate'),gcHow:g('fGcHow'),w2:g('fW2'),
+    lastCo:g('fLastCo'),totalExp:g('fTotalExp'),totalCo:parseInt(g('fTotalCo'))||0,
+    lastProject:g('fProject'),techStack:g('fTech'),overview:g('fOverview'),
+    cameUS:g('fCameUS'),curLoc:g('fCurLoc'),places:g('fPlaces'),first5:g('fFirst5'),
+    resumeLink:g('fResumeLink'),dlLink:g('fDlLink'),
+    github:g('fGithub'),linkedin:g('fLinkedin'),portfolio:g('fPortfolio'),
+    refs
+  };
+
+  const editId=document.getElementById('editId').value;
+  if(editId){
+    const id=parseInt(editId), idx=data.findIndex(m=>m.id===id);
+    if(idx!==-1){ data[idx]={...data[idx],...profile}; }
+  } else {
+    profile.id=data.length?Math.max(...data.map(m=>m.id))+1:1;
+    data.push(profile);
+  }
+  save();
+  renderCards(document.getElementById('searchInput').value);
+  updateStats();
+  bsModal.hide();
+  toast(editId?'✅ Member updated!':'✅ Member added!');
+  if(editId&&cur&&cur.id===parseInt(editId)) openProfile(parseInt(editId));
+  else if(!editId) openProfile(profile.id);
+}
+
+function confirmDelete(id){
+  const m=data.find(x=>x.id===id); if(!m)return;
+  if(!confirm(`Delete ${m.name}?\n\nThis cannot be undone.`))return;
+  data=data.filter(x=>x.id!==id);
+  save();
+  renderCards(document.getElementById('searchInput').value);
+  updateStats();
+  if(cur&&cur.id===id) closeProfile();
+  toast('🗑️ Member deleted','info');
+}
+
+// ═══ THEME ══════════════════════════════════════════════════════════
+function applyTheme(dark){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  const ico=document.getElementById('themeIco'),lbl=document.getElementById('themeLbl');
+  if(ico) ico.className=dark?'bi bi-sun-fill':'bi bi-moon-stars-fill';
+  if(lbl) lbl.textContent=dark?'Light':'Dark';
+  localStorage.setItem('tph_theme',dark?'dark':'light');
+}
+
+// ═══ BIND ALL EVENTS ════════════════════════════════════════════════
+function bindAll(){
+  document.getElementById('searchInput').addEventListener('input',e=>{
+    renderCards(e.target.value);
+    if(document.getElementById('profilePanel').classList.contains('open')) closeProfile();
+  });
+  document.getElementById('resetSearch').addEventListener('click',()=>{
+    document.getElementById('searchInput').value='';
+    renderCards('');
+  });
+  document.getElementById('addBtn').addEventListener('click',()=>openModal(null));
+  document.getElementById('saveBtn').addEventListener('click',handleSave);
+  document.getElementById('closePanel').addEventListener('click',closeProfile);
+  document.getElementById('editBtn').addEventListener('click',()=>{ if(cur) openModal(cur); });
+  document.getElementById('delBtn').addEventListener('click',()=>{ if(cur) confirmDelete(cur.id); });
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>activateTab(b.dataset.tab)));
+  document.getElementById('themeBtn').addEventListener('click',()=>{
+    applyTheme(document.documentElement.getAttribute('data-theme')!=='dark');
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&document.getElementById('profilePanel').classList.contains('open')) closeProfile();
+  });
+  document.getElementById('profileModal').addEventListener('hidden.bs.modal',()=>{
+    document.getElementById('profileForm').reset();
+  });
+}
+</script>
+</body>
+</html>

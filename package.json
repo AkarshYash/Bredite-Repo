@@ -1,0 +1,11 @@
+{
+  "name": "team-profile-hub",
+  "version": "1.0.0",
+  "description": "Team Profile Hub – Full-stack US IT Consultants manager",
+  "private": true,
+  "scripts": {
+    "install:backend": "cd backend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "start:backend": "cd backend && npm start"
+  }
+}
