@@ -35,13 +35,17 @@ let bsToast      = null;
    INIT
 ══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('[INIT] Starting Team Profile Hub...');
   bsModal = new bootstrap.Modal(document.getElementById('profileModal'));
   bsToast = new bootstrap.Toast(document.getElementById('appToast'), { delay: 3000 });
 
   applyTheme(localStorage.getItem('tph_theme') === 'dark');
   showSkeletons();
+  console.log('[INIT] Calling fetchMembers()...');
   await fetchMembers();
+  console.log('[INIT] fetchMembers() completed. teamData has', teamData.length, 'members');
   bindEvents();
+  console.log('[INIT] Initialization complete.');
 });
 
 /* ══════════════════════════════════════════════════
@@ -83,8 +87,11 @@ async function api(method, path, body) {
 }
 
 async function fetchMembers() {
+  console.log('[FETCH] Starting fetchMembers()...');
   try {
+    console.log('[FETCH] Calling API:', `${API_BASE}/members`);
     const { data } = await api('GET', '/members');
+    console.log('[FETCH] API success - received', data.length, 'members');
     teamData = data;
     isOnline = true;
     setApiStatus('online', 'Live – Supabase');
@@ -95,14 +102,20 @@ async function fetchMembers() {
     isOnline = false;
     if (!teamData.length) {
       // No cache either — load the built-in default members so something is always visible
+      console.log('[OFFLINE] No cache - loading default fallback data');
       teamData = getDefaultFallback();
+      console.log('[OFFLINE] Loaded', teamData.length, 'default members');
       setApiStatus('offline', 'Demo – no server');
     } else {
+      console.log('[OFFLINE] Using cached data:', teamData.length, 'members');
       setApiStatus('offline', 'Offline – cached');
     }
   }
+  console.log('[FETCH] Calling renderCards() with', teamData.length, 'members');
   renderCards();
+  console.log('[FETCH] Calling updateStats()');
   updateStats();
+  console.log('[FETCH] fetchMembers() complete');
 }
 
 async function saveMember(payload, id) {
