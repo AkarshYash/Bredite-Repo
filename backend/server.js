@@ -20,7 +20,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://cdn.jsdelivr.net", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"]
+      connectSrc: ["'self'", "*"]
     }
   }
 }));
@@ -44,10 +44,10 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // ── Serve frontend static files ───────────────────────────────────────
+const rootPath = path.join(__dirname, '..');
 const frontendPath = path.join(__dirname, '..', 'frontend');
 
-// Force the browser to always revalidate HTML, JS, and CSS — prevents stale cache issues
-app.use(express.static(frontendPath, {
+const staticOptions = {
   setHeaders(res, filePath) {
     const ext = path.extname(filePath).toLowerCase();
     if (['.html', '.js', '.css'].includes(ext)) {
@@ -56,7 +56,12 @@ app.use(express.static(frontendPath, {
       res.setHeader('Expires', '0');
     }
   }
-}));
+};
+
+app.use(express.static(rootPath, staticOptions));
+if (require('fs').existsSync(frontendPath)) {
+  app.use(express.static(frontendPath, staticOptions));
+}
 
 // ── API Routes ────────────────────────────────────────────────────────
 app.use('/api/members', membersRouter);
@@ -65,8 +70,17 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ── SPA catch-all: serve index.html for any non-API route ─────────────
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  const rootIndex = path.join(__dirname, '..', 'index.html');
+  if (require('fs').existsSync(rootIndex)) {
+    return res.sendFile(rootIndex);
+  }
+  const frontendIndex = path.join(__dirname, '..', 'frontend', 'index.html');
+  if (require('fs').existsSync(frontendIndex)) {
+    return res.sendFile(frontendIndex);
+  }
+  next();
 });
 
 // ── Global error handler ──────────────────────────────────────────────
@@ -75,8 +89,10 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀  Team Profile Hub running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀  Team Profile Hub running on http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;
