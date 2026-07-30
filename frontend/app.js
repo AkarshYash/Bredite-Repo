@@ -11,11 +11,15 @@
    For local dev override window.API_BASE in a <script>
    before this file, or set VITE_API_BASE env var.
 ──────────────────────────────────────────────────── */
+// When served from Express on port 3001 (local dev) OR Vercel (same-origin),
+// always use a relative /api path so it just works everywhere.
+// When opened as a local file (file://) there is no backend, so we skip API calls.
 const API_BASE = (typeof window !== 'undefined' && window.API_BASE)
   ? window.API_BASE
-  : (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
-    ? 'http://localhost:3001/api'
-    : '/api';                    // same-origin on Vercel
+  : '/api';
+
+// How long (ms) to wait for the backend before giving up and using offline data
+const API_TIMEOUT_MS = 4000;
 
 const LS_KEY     = 'tph_offline_data';
 const LS_PENDING = 'tph_pending_sync';
@@ -43,18 +47,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ══════════════════════════════════════════════════
    API LAYER  (with localStorage offline fallback)
 ══════════════════════════════════════════════════ */
+
+// Returns true when the page is loaded as a local file (no server at all)
+function isFileProtocol() {
+  return typeof window !== 'undefined' && window.location.protocol === 'file:';
+}
+
 async function api(method, path, body) {
+  // Bail out immediately when there's no server (opened as file://)
+  if (isFileProtocol()) throw new Error('No server (file:// protocol)');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json' },
+    signal: controller.signal,
   };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${API_BASE}${path}`, opts);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, opts);
+    clearTimeout(timer);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('Request timed out');
+    throw err;
   }
-  return res.json();
 }
 
 async function fetchMembers() {
@@ -65,18 +90,23 @@ async function fetchMembers() {
     setApiStatus('online', 'Live – Supabase');
     cacheLocal(teamData);
   } catch (e) {
-    console.warn('[OFFLINE] Using cached data:', e.message);
+    console.warn('[OFFLINE] Using cached/default data:', e.message);
     teamData = getLocalCache();
     isOnline = false;
-    setApiStatus('offline', 'Offline – cached');
-    if (!teamData.length) teamData = getDefaultFallback();
+    if (!teamData.length) {
+      // No cache either — load the built-in default members so something is always visible
+      teamData = getDefaultFallback();
+      setApiStatus('offline', 'Demo – no server');
+    } else {
+      setApiStatus('offline', 'Offline – cached');
+    }
   }
   renderCards();
   updateStats();
 }
 
 async function saveMember(payload, id) {
-  if (isOnline) {
+  if (isOnline && !isFileProtocol()) {
     try {
       const { data } = id
         ? await api('PUT', `/members/${id}`, payload)
@@ -100,7 +130,7 @@ async function saveMember(payload, id) {
 }
 
 async function deleteMemberAPI(id) {
-  if (isOnline) {
+  if (isOnline && !isFileProtocol()) {
     try { await api('DELETE', `/members/${id}`); }
     catch (e) { toast('Delete failed on server', 'warn'); }
   }
@@ -689,11 +719,122 @@ function escAttr(str) {
 ══════════════════════════════════════════════════ */
 function getDefaultFallback() {
   return [
-    { id:1, name:'Nirav Patel',     gmail:'Niravp1216@gmail.com',        phone:'601-488-2998',     last_company:'Centene Corporation', visa_type:'Citizenship (Naturalized)', current_location:'Brandon, MS',   total_experience:'10+ years', resume_link:'', dl_link:'', github:'https://github.com/niravp1216-tech', linkedin:'https://www.linkedin.com/in/coder-48ba46251/', portfolio:'https://ubiquitous-starburst-4b7914.netlify.app/', tech_stack:'Python, AWS, Terraform, Docker, React, PostgreSQL', references:[], work_authorization:'U.S. Citizen', total_companies:3 },
-    { id:2, name:'Dhaval Patel',    gmail:'dhavalkumawat76@gmail.com',    phone:'+1(980)215-9384',  last_company:'NBCUniversal',          visa_type:'Citizenship (Naturalized)', current_location:'Mooresville, NC', total_experience:'8 years',   resume_link:'', dl_link:'', github:'', linkedin:'https://www.linkedin.com/in/ai-expert-coder', portfolio:'', tech_stack:'Python, FastAPI, AWS, LangChain, PyTorch', references:[], work_authorization:'U.S. Citizen', total_companies:4 },
-    { id:3, name:'Foram Patel',     gmail:'foram.patel4932@gmail.com',    phone:'(561) 342-1074',   last_company:'McKinsey & Company',    visa_type:'Citizenship',               current_location:'Florida',       total_experience:'11+ years', resume_link:'', dl_link:'', github:'', linkedin:'', portfolio:'', tech_stack:'Python, React, NestJS, FastAPI, LangChain', references:[], work_authorization:'U.S. Citizen', total_companies:4 },
-    { id:4, name:'Rishabh Tiwari',  gmail:'Rishabhstiwari1996@gmail.com', phone:'Not provided',     last_company:'WCG',                   visa_type:'Not specified',             current_location:'Not provided',  total_experience:'9+ years',  resume_link:'', dl_link:'', github:'', linkedin:'', portfolio:'', tech_stack:'AWS, Azure, Kubernetes, Terraform, Ansible', references:[], work_authorization:'Not specified', total_companies:5 },
-    { id:5, name:'Ritu',            gmail:'Not provided',                 phone:'Not provided',     last_company:'Centene',               visa_type:'Not specified',             current_location:'Not provided',  total_experience:'10.5 years',resume_link:'', dl_link:'', github:'', linkedin:'', portfolio:'', tech_stack:'Python, Go, FastAPI, AWS, Kubernetes, LangChain', references:[], work_authorization:'Not specified', total_companies:5 },
-    { id:6, name:'Hridesh Sharma',  gmail:'Not provided',                 phone:'Not provided',     last_company:'Brudite Private Limited',visa_type:'Not specified',            current_location:'Not provided',  total_experience:'6+ years',  resume_link:'', dl_link:'', github:'', linkedin:'', portfolio:'', tech_stack:'Python, Node.js, Slack Bolt SDK, LangChain, GPT-4', references:[], work_authorization:'Not specified', total_companies:6 },
+    {
+      id:1, name:'Nirav Patel', gmail:'Niravp1216@gmail.com', phone:'601-488-2998',
+      address:'905 Waters Edge, Brandon, Mississippi 39047',
+      education:'B.E. in Computer Science',
+      last_company:'Centene Corporation',
+      last_project:'Healthcare Cloud Migration & AI Integration',
+      last_project_overview:'Led cloud migration projects and AI-driven workflows for healthcare claims and member management, ensuring HIPAA compliance and high availability.',
+      tech_stack:'Python, AWS, Terraform, Docker, React, PostgreSQL',
+      work_authorization:'U.S. Citizen', visa_type:'Citizenship (Naturalized)',
+      green_card_date:'2018', green_card_how:'Employer-sponsored',
+      w2_c2c_preference:'W2: $50–$85/hr, C2C: $50–$85/hr', ssn_last4:'1806',
+      came_to_us_date:'2016', first_five_years_how:'F1 → OPT → H1-B → Green Card',
+      places_lived:'Brandon, MS', current_location:'Brandon, MS',
+      total_companies:3, marriage_date:'Not provided', property_owned:'Not provided',
+      dl_name:'Nirav Patel', age:'29', total_experience:'10+ years',
+      resume_link:'', dl_link:'',
+      github:'https://github.com/niravp1216-tech',
+      linkedin:'https://www.linkedin.com/in/coder-48ba46251/',
+      portfolio:'https://ubiquitous-starburst-4b7914.netlify.app/',
+      references:[
+        { name:'Vito Mantese', designation:'Team Lead', company:'Centene Corporation', email:'Not Available', phone:'+1 314-399-9771', linkedin:'linkedin.com/in/vito-mantese-3a7264140' },
+        { name:'Amol Basargekar', designation:'Group Product Manager', company:'IntegriChain', email:'amol.basargekar@gmail.com', phone:'+1 954-555-0636', linkedin:'linkedin.com/in/amol-basargekar-8b66aa8' },
+        { name:'Mrudula Vijayanarasimha', designation:'Sr. Software Engineer | AI Engineer', company:'Centene Corporation', email:'mrudula.v1712@gmail.com', phone:'+1 585-406-2642', linkedin:'linkedin.com/in/mrudulavijayanarasimha/' }
+      ]
+    },
+    {
+      id:2, name:'Dhaval Patel', gmail:'dhavalkumawat76@gmail.com', phone:'+1 (980)-215-9384',
+      address:'116 Mackinac Drive, Mooresville, NC 28117',
+      education:'B.E. in Computer Engineering',
+      last_company:'NBCUniversal',
+      last_project:'AI-Powered Clinical Trial Platform',
+      last_project_overview:'Led development of cloud-native microservices and AI/LLM workflows for clinical data management, patient monitoring, and regulatory compliance.',
+      tech_stack:'Python, FastAPI, AWS (Lambda, EKS, S3, DynamoDB), Terraform, Docker, LangChain, PyTorch, PostgreSQL, MongoDB, Redis',
+      work_authorization:'U.S. Citizen', visa_type:'Citizenship (Naturalized)',
+      green_card_date:'2019', green_card_how:'Marriage to U.S. citizen',
+      w2_c2c_preference:'W2 preferred', ssn_last4:'6747',
+      came_to_us_date:'2017', first_five_years_how:'Marriage-based Green Card in 2019, Citizenship in 2025',
+      places_lived:'Mooresville, NC', current_location:'Mooresville, NC',
+      total_companies:4, marriage_date:'2019', property_owned:'Not provided',
+      dl_name:'Dhaval Patel', age:'33', total_experience:'8 years',
+      resume_link:'', dl_link:'',
+      github:'https://github.com/niravp1216-tech',
+      linkedin:'https://www.linkedin.com/in/ai-expert-coder',
+      portfolio:'https://dhavalpatel.tech',
+      references:[]
+    },
+    {
+      id:3, name:'Foram Patel', gmail:'foram.patel4932@gmail.com', phone:'(561) 342-1074',
+      address:'Florida',
+      education:'B.S./M.S. in Computer Science',
+      last_company:'McKinsey & Company',
+      last_project:'AI-Driven Healthcare RCM Platform',
+      last_project_overview:'Architected agentic AI and ETL pipelines for healthcare Revenue Cycle Management, cutting claim resolution time from hours to minutes using multi-agent LLM workflows and RAG systems.',
+      tech_stack:'Python, React, NestJS, FastAPI, Node.js, AWS, DynamoDB, Kubernetes, Terraform, LangChain, pgvector, Docker, Grafana',
+      work_authorization:'U.S. Citizen', visa_type:'Citizenship',
+      green_card_date:'Not provided', green_card_how:'Not provided',
+      w2_c2c_preference:'Not provided', ssn_last4:'N/A',
+      came_to_us_date:'Not provided', first_five_years_how:'Not provided',
+      places_lived:'Not provided', current_location:'Florida',
+      total_companies:4, marriage_date:'Not provided', property_owned:'Not provided',
+      dl_name:'Foram Patel', age:'34', total_experience:'11+ years',
+      resume_link:'', dl_link:'',
+      github:'https://github.com/foram-p',
+      linkedin:'https://www.linkedin.com/in/forampatel',
+      portfolio:'https://forampatel.dev',
+      references:[]
+    },
+    {
+      id:4, name:'Rishabh Tiwari', gmail:'Rishabhstiwari1996@gmail.com', phone:'Not provided',
+      address:'Not provided',
+      education:'B.Tech in Computer Science & Engineering, Rajasthan Technical University',
+      last_company:'WCG',
+      last_project:'AI-Powered Anomaly Detection & Remediation',
+      last_project_overview:'Architected secure multi-cloud infrastructure for an AI-powered anomaly detection platform using Terraform, deploying containerised microservices on AKS and OpenShift.',
+      tech_stack:'AWS, Azure, GCP, Kubernetes, Helm, Terraform, Ansible, Jenkins, GitHub Actions, ArgoCD, Datadog, Prometheus, Grafana, ELK, Python, Bash, PostgreSQL',
+      work_authorization:'Not specified', visa_type:'Not specified',
+      green_card_date:'Not provided', green_card_how:'Not provided',
+      w2_c2c_preference:'Not provided', ssn_last4:'N/A',
+      came_to_us_date:'Not provided', first_five_years_how:'Not provided',
+      places_lived:'Not provided', current_location:'Not provided',
+      total_companies:5, marriage_date:'Not provided', property_owned:'Not provided',
+      dl_name:'Rishabh Tiwari', age:'0', total_experience:'9+ years',
+      resume_link:'', dl_link:'', github:'', linkedin:'', portfolio:'', references:[]
+    },
+    {
+      id:5, name:'Ritu', gmail:'Not provided', phone:'Not provided',
+      address:'Not provided', education:'Not specified',
+      last_company:'Centene',
+      last_project:'AI Platform Management & API Gateway',
+      last_project_overview:'Leading development of enterprise and healthcare AI & Generative AI platforms, including a centralized API management platform.',
+      tech_stack:'Python, Go, FastAPI, Flask, Django, AWS, GCP, Azure, Kubernetes, Docker, LangChain, FAISS, OpenSearch, Kafka, Airflow, Databricks, Snowflake',
+      work_authorization:'Not specified', visa_type:'Not specified',
+      green_card_date:'Not provided', green_card_how:'Not provided',
+      w2_c2c_preference:'Not provided', ssn_last4:'N/A',
+      came_to_us_date:'Not provided', first_five_years_how:'Not provided',
+      places_lived:'Not provided', current_location:'Not provided',
+      total_companies:5, marriage_date:'Not provided', property_owned:'Not provided',
+      dl_name:'Ritu', age:'0', total_experience:'10.5 years',
+      resume_link:'', dl_link:'', github:'', linkedin:'', portfolio:'', references:[]
+    },
+    {
+      id:6, name:'Hridesh Sharma', gmail:'Not provided', phone:'Not provided',
+      address:'Not provided',
+      education:'B.Tech in Computer Science',
+      last_company:'Brudite Private Limited',
+      last_project:'AI-Powered Slack Workflow Automation',
+      last_project_overview:'Led design and development of custom Slack applications with OAuth 2.0, RBAC, interactive components, and AI-powered workflows integrating GPT-4 and Claude via LangChain and MCP servers.',
+      tech_stack:'Python, Node.js, Go, FastAPI, Slack Bolt SDK, OAuth 2.0, LangChain, GPT-4, Claude, RAG, Vector DB, PostgreSQL, MongoDB, AWS, GCP, Terraform',
+      work_authorization:'Not specified', visa_type:'Not specified',
+      green_card_date:'Not provided', green_card_how:'Not provided',
+      w2_c2c_preference:'Not provided', ssn_last4:'N/A',
+      came_to_us_date:'Not provided', first_five_years_how:'Not provided',
+      places_lived:'Not provided', current_location:'Not provided',
+      total_companies:6, marriage_date:'Not provided', property_owned:'Not provided',
+      dl_name:'Hridesh Sharma', age:'0', total_experience:'6+ years',
+      resume_link:'', dl_link:'', github:'', linkedin:'', portfolio:'', references:[]
+    },
   ];
 }
