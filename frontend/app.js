@@ -978,6 +978,46 @@ async function loginAsDemo(role) {
   }
 }
 
+async function handleGoogleAuth() {
+  const errorEl = document.getElementById('authErrorAlert');
+  if (errorEl) errorEl.classList.add('d-none');
+
+  try {
+    if (typeof window.supabase !== 'undefined' && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+      const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin }
+      });
+      if (error) throw error;
+    } else {
+      console.log('[AUTH] Executing Demo Google OAuth...');
+      const googleUser = {
+        id: 'google-user-' + Date.now(),
+        email: 'google.user@example.com'
+      };
+      const googleProfile = {
+        id: googleUser.id,
+        email: googleUser.email,
+        name: 'Google User',
+        role: 'MEMBER'
+      };
+      const session = { access_token: 'mock-google-token' };
+
+      saveSession(session, googleUser, googleProfile);
+      bsAuthModal.hide();
+      toast('👋 Signed in with Google (google.user@example.com)', 'success');
+    }
+  } catch (err) {
+    if (errorEl) {
+      errorEl.textContent = err.message || 'Google Auth Failed';
+      errorEl.classList.remove('d-none');
+    } else {
+      toast('Google Auth error: ' + err.message, 'error');
+    }
+  }
+}
+
 async function handleAuthSubmit(e) {
   e.preventDefault();
   const isSignup = !document.getElementById('signupNameGroup').classList.contains('d-none');
@@ -1044,6 +1084,7 @@ function bindEvents() {
   document.getElementById('tabSignupBtn').addEventListener('click', () => openAuthModal('signup'));
   document.getElementById('demoAdminBtn').addEventListener('click', () => loginAsDemo('ADMIN'));
   document.getElementById('demoMemberBtn').addEventListener('click', () => loginAsDemo('MEMBER'));
+  document.getElementById('googleAuthBtn')?.addEventListener('click', handleGoogleAuth);
 
   document.getElementById('accLogoutBtn').addEventListener('click', () => {
     bsAccountModal.hide();
