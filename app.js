@@ -37,7 +37,7 @@ let userProfilesList   = [];
    INIT
 ══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[INIT] Starting Team Profile Hub v3.0...');
+  console.log('[INIT] Starting Team Profile Hub v4.0...');
 
   bsModal        = new bootstrap.Modal(document.getElementById('profileModal'));
   bsAuthModal    = new bootstrap.Modal(document.getElementById('authModal'));
@@ -225,7 +225,6 @@ async function fetchUsersList() {
   }
 }
 
-/* ── LocalStorage cache ───────────────────────────── */
 function cacheLocal(data)  { try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(_){} }
 function getLocalCache()   { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch(_){ return []; } }
 
@@ -283,7 +282,7 @@ function renderCards(filter = '') {
   }).join('');
 
   grid.querySelectorAll('.person-card').forEach(card => {
-    card.addEventListener('click', () => openProfile(parseInt(card.dataset.id)));
+    card.addEventListener('click', () => openProfile(parseInt(card.dataset.id, 10)));
   });
 }
 
@@ -343,29 +342,22 @@ function updateUIForRole() {
   const isAdmin  = role === 'ADMIN';
   const isMember = role === 'MEMBER';
 
-  // Nav buttons
   document.getElementById('navAuditBtn')?.classList.toggle('d-none', !isAdmin);
   document.getElementById('navUsersBtn')?.classList.toggle('d-none', !isAdmin);
 
-  // Modal alert
   document.getElementById('modalRoleAlert')?.classList.toggle('d-none', !isMember);
 
-  // Form Save Button Label
   const saveBtnText = document.getElementById('saveBtnText');
   if (saveBtnText) {
     saveBtnText.textContent = isAdmin ? 'Save Member' : (isMember ? 'Submit for Approval' : 'Sign in to Submit');
   }
 
-  // Edit / Delete button text in profile panel
   const editBtnText = document.getElementById('editBtnText');
   const delBtnText  = document.getElementById('delBtnText');
   if (editBtnText) editBtnText.textContent = isAdmin ? 'Edit' : 'Propose Edit';
   if (delBtnText)  delBtnText.textContent  = isAdmin ? 'Delete' : 'Propose Delete';
 }
 
-/* ══════════════════════════════════════════════════
-   VIEW SWITCHING
-══════════════════════════════════════════════════ */
 function switchView(targetViewId) {
   document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.app-nav-btn').forEach(b => b.classList.remove('active'));
@@ -382,7 +374,7 @@ function switchView(targetViewId) {
 }
 
 /* ══════════════════════════════════════════════════
-   PROFILE PANEL
+   PROFILE PANEL (SLIDE-OVER DRAWER)
 ══════════════════════════════════════════════════ */
 function openProfile(id) {
   const p = teamData.find(m => m.id === id);
@@ -390,8 +382,10 @@ function openProfile(id) {
   currentMember = p;
 
   const panel = document.getElementById('profilePanel');
+  const backdrop = document.getElementById('panelBackdrop');
+
   panel.classList.add('open');
-  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (backdrop) backdrop.classList.add('open');
 
   document.getElementById('heroAvatar').textContent  = getInitials(p.name);
   document.getElementById('detailName').textContent  = p.name;
@@ -412,9 +406,10 @@ function openProfile(id) {
 
 function closeProfile() {
   const panel = document.getElementById('profilePanel');
-  panel.classList.remove('open');
+  const backdrop = document.getElementById('panelBackdrop');
+  if (panel) panel.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('open');
   currentMember = null;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function activateTab(tabId) {
@@ -660,7 +655,7 @@ async function handleSave() {
     w2_c2c_preference:    document.getElementById('fW2').value.trim(),
     last_company:         document.getElementById('fLastCompany').value.trim(),
     total_experience:     document.getElementById('fTotalExp').value.trim(),
-    total_companies:      parseInt(document.getElementById('fTotalCompanies').value) || 0,
+    total_companies:      parseInt(document.getElementById('fTotalCompanies').value, 10) || 0,
     last_project:         document.getElementById('fLastProject').value.trim(),
     last_project_overview:document.getElementById('fLastProjectOverview').value.trim(),
     tech_stack:           document.getElementById('fTechStack').value.trim(),
@@ -687,16 +682,14 @@ async function handleSave() {
 
   try {
     if (isAdmin) {
-      // Direct save
       const path = id ? `/members/${id}` : '/members';
       const method = id ? 'PUT' : 'POST';
-      const { data } = await api(method, path, payload);
+      await api(method, path, payload);
       await fetchMembers();
       bsModal.hide();
       toast(id ? '✅ Member updated directly!' : '✅ Member added directly!', 'success');
       if (id && currentMember && currentMember.id === id) openProfile(id);
     } else {
-      // Proposal path for MEMBER
       const changeType = id ? 'update' : 'create';
       await api('POST', '/pending-changes', {
         change_type: changeType,
@@ -822,7 +815,6 @@ function renderDiffContent(item, targetMember) {
   if (item.change_type === 'delete') {
     return `<div class="diff-row"><div class="diff-label">Action:</div><div class="diff-val removed">Delete record #${item.target_member_id} (${escHtml(targetMember?.name || 'Consultant')})</div></div>`;
   }
-  // Update diff
   if (!targetMember) return `<div class="text-muted">Target member #${item.target_member_id}</div>`;
 
   return Object.entries(payload)
@@ -837,7 +829,7 @@ function renderDiffContent(item, targetMember) {
 
 async function approveChange(id) {
   try {
-    const res = await api('POST', `/pending-changes/${id}/approve`, { admin_note: 'Approved via Admin Panel' });
+    await api('POST', `/pending-changes/${id}/approve`, { admin_note: 'Approved via Admin Panel' });
     toast('✅ Proposal approved and applied live!', 'success');
     await fetchMembers();
     await fetchPendingCount();
@@ -866,7 +858,7 @@ async function confirmReject() {
 }
 
 /* ══════════════════════════════════════════════════
-   ACTIVITY LOG (Audit Table)
+   ACTIVITY LOG & USERS TABLE
 ══════════════════════════════════════════════════ */
 function renderAuditTable() {
   const tbody = document.getElementById('auditTableBody');
@@ -891,9 +883,6 @@ function renderAuditTable() {
     </tr>`).join('');
 }
 
-/* ══════════════════════════════════════════════════
-   USER MANAGEMENT TABLE
-══════════════════════════════════════════════════ */
 function renderUsersTable() {
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
@@ -930,7 +919,7 @@ async function promoteUser(id, newRole) {
 }
 
 /* ══════════════════════════════════════════════════
-   AUTH MODAL & FLOWS
+   AUTH MODAL & DEMO LOGINS
 ══════════════════════════════════════════════════ */
 function openAuthModal(mode = 'login') {
   const title = document.getElementById('authModalTitle');
@@ -948,7 +937,6 @@ function openAuthModal(mode = 'login') {
     submitBtn.textContent = 'Sign In';
     nameGroup.classList.add('d-none');
     document.getElementById('tabLoginBtn').classList.add('active');
-    document.getElementById('tabSignupBtn').classList.active = false;
     document.getElementById('tabSignupBtn').classList.remove('active');
   }
 
@@ -968,6 +956,26 @@ function openAccountModal() {
   badge.className = `badge rounded-pill px-3 py-2 fs-6 ${currentProfile.role === 'ADMIN' ? 'bg-danger' : 'bg-primary'}`;
 
   bsAccountModal.show();
+}
+
+async function loginAsDemo(role) {
+  const isDemoAdmin = role === 'ADMIN';
+  const email = isDemoAdmin ? 'admin@teamprofilehub.com' : 'member@teamprofilehub.com';
+  const name  = isDemoAdmin ? 'Demo Admin' : 'Demo Member';
+  const token = isDemoAdmin ? 'mock-admin-token' : 'mock-member-token';
+  const userId = isDemoAdmin ? '00000000-0000-0000-0000-000000000001' : '00000000-0000-0000-0000-000000000002';
+
+  const user = { id: userId, email };
+  const profile = { id: userId, email, name, role };
+  const session = { access_token: token };
+
+  saveSession(session, user, profile);
+  bsAuthModal.hide();
+  toast(`👋 Logged in as ${role} (${email})`, 'success');
+  if (role === 'ADMIN') {
+    switchView('viewMembers');
+    fetchPendingCount();
+  }
 }
 
 async function handleAuthSubmit(e) {
@@ -1002,12 +1010,10 @@ async function handleAuthSubmit(e) {
    EVENT BINDINGS
 ══════════════════════════════════════════════════ */
 function bindEvents() {
-  // Navigation tabs
   document.querySelectorAll('.app-nav-btn').forEach(btn => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
 
-  // Search & Filters
   document.getElementById('searchInput').addEventListener('input', e => {
     renderCards(e.target.value);
     if (document.getElementById('profilePanel').classList.contains('open')) closeProfile();
@@ -1018,45 +1024,41 @@ function bindEvents() {
     if (document.getElementById('profilePanel').classList.contains('open')) closeProfile();
   });
 
-  // Member Modal
   document.getElementById('addNewBtn').addEventListener('click', openAddModal);
   document.getElementById('saveProfileBtn').addEventListener('click', handleSave);
 
-  // Panel buttons
   document.getElementById('closePanelBtn').addEventListener('click', closeProfile);
+  document.getElementById('panelBackdrop').addEventListener('click', closeProfile);
+
   document.getElementById('editProfileBtn').addEventListener('click', () => {
     if (currentMember) openEditModal(currentMember);
   });
   document.getElementById('deleteProfileBtn').addEventListener('click', handleDelete);
 
-  // Profile tabs
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.dataset.tab));
   });
 
-  // Auth Form & Modals
   document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
   document.getElementById('tabLoginBtn').addEventListener('click', () => openAuthModal('login'));
   document.getElementById('tabSignupBtn').addEventListener('click', () => openAuthModal('signup'));
+  document.getElementById('demoAdminBtn').addEventListener('click', () => loginAsDemo('ADMIN'));
+  document.getElementById('demoMemberBtn').addEventListener('click', () => loginAsDemo('MEMBER'));
+
   document.getElementById('accLogoutBtn').addEventListener('click', () => {
     bsAccountModal.hide();
     clearSession();
     toast('Signed out successfully', 'info');
   });
 
-  // Rejection modal
   document.getElementById('confirmRejectBtn').addEventListener('click', confirmReject);
-
-  // Audit filters
   document.getElementById('refreshAuditBtn')?.addEventListener('click', fetchAuditLog);
 
-  // Theme Toggle
   document.getElementById('themeToggle').addEventListener('click', () => {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     applyTheme(!isDark);
   });
 
-  // ESC key closes panel
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && document.getElementById('profilePanel').classList.contains('open')) {
       closeProfile();
@@ -1065,7 +1067,7 @@ function bindEvents() {
 }
 
 /* ══════════════════════════════════════════════════
-   THEME & STATUS
+   THEME & UTILS
 ══════════════════════════════════════════════════ */
 function applyTheme(dark) {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -1123,9 +1125,6 @@ function escHtml(str) {
 
 function escAttr(str) { return escHtml(str); }
 
-/* ══════════════════════════════════════════════════
-   DEFAULT FALLBACK DATA (Offline Demo Data)
-══════════════════════════════════════════════════ */
 function getDefaultFallback() {
   return [
     {
@@ -1133,7 +1132,7 @@ function getDefaultFallback() {
       address:'905 Waters Edge, Brandon, Mississippi 39047',
       education:'B.E. in Computer Science', last_company:'Centene Corporation',
       last_project:'Healthcare Cloud Migration & AI Integration',
-      last_project_overview:'Led cloud migration projects and AI-driven workflows for healthcare claims and member management, ensuring HIPAA compliance.',
+      last_project_overview:'Led cloud migration projects and AI-driven workflows for healthcare claims and member management.',
       tech_stack:'Python, AWS, Terraform, Docker, React, PostgreSQL',
       work_authorization:'U.S. Citizen', visa_type:'Citizenship (Naturalized)',
       green_card_date:'2018', green_card_how:'Employer-sponsored',
@@ -1153,8 +1152,8 @@ function getDefaultFallback() {
       address:'116 Mackinac Drive, Mooresville, NC 28117',
       education:'B.E. in Computer Engineering', last_company:'NBCUniversal',
       last_project:'AI-Powered Clinical Trial Platform',
-      last_project_overview:'Led development of cloud-native microservices and AI/LLM workflows for clinical data management.',
-      tech_stack:'Python, FastAPI, AWS, Terraform, Docker, LangChain, PyTorch, PostgreSQL',
+      last_project_overview:'Led development of cloud-native microservices and AI/LLM workflows.',
+      tech_stack:'Python, FastAPI, AWS, Terraform, Docker, LangChain',
       work_authorization:'U.S. Citizen', visa_type:'Citizenship (Naturalized)',
       green_card_date:'2019', green_card_how:'Marriage to U.S. citizen',
       w2_c2c_preference:'W2 preferred', ssn_last4:'6747',
