@@ -1,67 +1,94 @@
 -- ═══════════════════════════════════════════════════════════════════
---  TEAM PROFILE HUB  –  Supabase Schema
---  Paste this into: Supabase Dashboard → SQL Editor → Run
+--  TEAM PROFILE HUB  –  Supabase Schema with Auth & Approval Workflow
+--  Paste into: Supabase Dashboard → SQL Editor → Run
 -- ═══════════════════════════════════════════════════════════════════
 
--- Enable UUID extension (already enabled on Supabase by default)
--- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ── Drop table if re-running ─────────────────────────────────────────
-DROP TABLE IF EXISTS members CASCADE;
-
--- ── Create members table ─────────────────────────────────────────────
-CREATE TABLE members (
-  id                   BIGSERIAL PRIMARY KEY,
-  name                 TEXT        NOT NULL,
-  gmail                TEXT        NOT NULL,
-  phone                TEXT        DEFAULT '',
-  address              TEXT        DEFAULT '',
-  age                  TEXT        DEFAULT '',
-  education            TEXT        DEFAULT '',
-  dl_name              TEXT        DEFAULT '',
-  marriage_date        TEXT        DEFAULT '',
-  property_owned       TEXT        DEFAULT '',
-  ssn_last4            TEXT        DEFAULT '',
-
-  -- Visa & Work
-  visa_type            TEXT        DEFAULT '',
-  work_authorization   TEXT        DEFAULT '',
-  green_card_date      TEXT        DEFAULT '',
-  green_card_how       TEXT        DEFAULT '',
-  w2_c2c_preference    TEXT        DEFAULT '',
-
-  -- Professional
-  last_company         TEXT        DEFAULT '',
-  total_experience     TEXT        DEFAULT '',
-  total_companies      INTEGER     DEFAULT 0,
-  last_project         TEXT        DEFAULT '',
-  last_project_overview TEXT       DEFAULT '',
-  tech_stack           TEXT        DEFAULT '',
-
-  -- US History
-  came_to_us_date      TEXT        DEFAULT '',
-  first_five_years_how TEXT        DEFAULT '',
-  places_lived         TEXT        DEFAULT '',
-  current_location     TEXT        DEFAULT '',
-
-  -- Documents (Google Drive links)
-  resume_link          TEXT        DEFAULT '',
-  dl_link              TEXT        DEFAULT '',
-
-  -- Social
-  github               TEXT        DEFAULT '',
-  linkedin             TEXT        DEFAULT '',
-  portfolio            TEXT        DEFAULT '',
-
-  -- References stored as JSON array
-  references           JSONB       DEFAULT '[]'::jsonb,
-
-  -- Timestamps
-  created_at           TIMESTAMPTZ DEFAULT NOW(),
-  updated_at           TIMESTAMPTZ DEFAULT NOW()
+-- ── 1. PROFILES TABLE (Linked to auth.users) ─────────────────────────
+DROP TABLE IF EXISTS profiles CASCADE;
+CREATE TABLE profiles (
+  id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email      TEXT NOT NULL,
+  name       TEXT DEFAULT '',
+  role       TEXT NOT NULL DEFAULT 'MEMBER' CHECK (role IN ('ADMIN', 'MEMBER', 'GUEST')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ── Auto-update updated_at on every row change ────────────────────────
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, name, role)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    'MEMBER'
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ── 2. MEMBERS TABLE ─────────────────────────────────────────────────
+DROP TABLE IF EXISTS members CASCADE;
+CREATE TABLE members (
+  id                    BIGSERIAL PRIMARY KEY,
+  name                  TEXT        NOT NULL,
+  gmail                 TEXT        NOT NULL,
+  phone                 TEXT        DEFAULT '',
+  address               TEXT        DEFAULT '',
+  age                   TEXT        DEFAULT '',
+  education             TEXT        DEFAULT '',
+  dl_name               TEXT        DEFAULT '',
+  marriage_date         TEXT        DEFAULT '',
+  property_owned        TEXT        DEFAULT '',
+  ssn_last4             TEXT        DEFAULT '',
+
+  -- Visa & Work
+  visa_type             TEXT        DEFAULT '',
+  work_authorization    TEXT        DEFAULT '',
+  green_card_date       TEXT        DEFAULT '',
+  green_card_how        TEXT        DEFAULT '',
+  w2_c2c_preference     TEXT        DEFAULT '',
+
+  -- Professional
+  last_company          TEXT        DEFAULT '',
+  total_experience      TEXT        DEFAULT '',
+  total_companies       INTEGER     DEFAULT 0,
+  last_project          TEXT        DEFAULT '',
+  last_project_overview TEXT        DEFAULT '',
+  tech_stack            TEXT        DEFAULT '',
+
+  -- US History
+  came_to_us_date       TEXT        DEFAULT '',
+  first_five_years_how  TEXT        DEFAULT '',
+  places_lived          TEXT        DEFAULT '',
+  current_location      TEXT        DEFAULT '',
+
+  -- Documents (Google Drive links)
+  resume_link           TEXT        DEFAULT '',
+  dl_link               TEXT        DEFAULT '',
+
+  -- Social
+  github                TEXT        DEFAULT '',
+  linkedin              TEXT        DEFAULT '',
+  portfolio             TEXT        DEFAULT '',
+
+  -- References stored as JSON array
+  references            JSONB       DEFAULT '[]'::jsonb,
+
+  -- Timestamps
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Auto-update updated_at on members
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -74,21 +101,64 @@ CREATE TRIGGER members_updated_at
   BEFORE UPDATE ON members
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- ── Row Level Security (RLS) ──────────────────────────────────────────
--- Using anon key with RLS policies so the API is the gatekeeper.
+-- ── 3. PENDING CHANGES TABLE ──────────────────────────────────────────
+DROP TABLE IF EXISTS pending_changes CASCADE;
+CREATE TABLE pending_changes (
+  id                 BIGSERIAL PRIMARY KEY,
+  change_type        TEXT NOT NULL CHECK (change_type IN ('create', 'update', 'delete')),
+  target_member_id   BIGINT REFERENCES members(id) ON DELETE SET NULL,
+  payload            JSONB NOT NULL DEFAULT '{}'::jsonb,
+  submitted_by       UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  submitted_by_email TEXT DEFAULT '',
+  submitted_at       TIMESTAMPTZ DEFAULT NOW(),
+  status             TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by        UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_at        TIMESTAMPTZ,
+  admin_note         TEXT DEFAULT ''
+);
+
+-- ── 4. AUDIT LOG TABLE ────────────────────────────────────────────────
+DROP TABLE IF EXISTS audit_log CASCADE;
+CREATE TABLE audit_log (
+  id            BIGSERIAL PRIMARY KEY,
+  action_type   TEXT NOT NULL,
+  actor         TEXT NOT NULL,
+  target_record TEXT DEFAULT '',
+  before_value  JSONB DEFAULT NULL,
+  after_value   JSONB DEFAULT NULL,
+  timestamp     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── 5. ROW LEVEL SECURITY (RLS) POLICIES ──────────────────────────────
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pending_changes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations from the service/anon key (backend controls access)
-CREATE POLICY "allow_all" ON members
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+-- Profiles Policies
+CREATE POLICY "Public profiles reading" ON profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile name" ON profiles FOR UPDATE USING (auth.uid() = id);
 
--- ── Indexes ───────────────────────────────────────────────────────────
-CREATE INDEX idx_members_name  ON members (name);
+-- Members Policies (Open for read, backend/admin managed for mutations)
+CREATE POLICY "Members public read" ON members FOR SELECT USING (true);
+CREATE POLICY "Backend/Admin direct mutation" ON members FOR ALL USING (true) WITH CHECK (true);
+
+-- Pending Changes Policies
+CREATE POLICY "Read pending changes" ON pending_changes FOR SELECT USING (true);
+CREATE POLICY "Insert pending change" ON pending_changes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Update pending change" ON pending_changes FOR UPDATE USING (true);
+
+-- Audit Log Policies
+CREATE POLICY "Read audit log" ON audit_log FOR SELECT USING (true);
+CREATE POLICY "Insert audit log" ON audit_log FOR INSERT WITH CHECK (true);
+
+-- ── 6. INDEXES ────────────────────────────────────────────────────────
+CREATE INDEX idx_members_name ON members (name);
 CREATE INDEX idx_members_gmail ON members (gmail);
+CREATE INDEX idx_pending_status ON pending_changes (status);
+CREATE INDEX idx_audit_timestamp ON audit_log (timestamp DESC);
 
--- ── Seed data ─────────────────────────────────────────────────────────
+-- ── 7. SEED DATA FOR MEMBERS ──────────────────────────────────────────
 INSERT INTO members (
   name, gmail, phone, address, age, education, dl_name, marriage_date,
   property_owned, ssn_last4, visa_type, work_authorization, green_card_date,
