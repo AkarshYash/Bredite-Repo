@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════
    TEAM PROFILE HUB  –  app.js
    Full frontend with Auth, RBAC, User Registration Approval Workflow,
-   Google Sign-In, Persistent Sessions & Audit Logging
+   Google & Apple Account Selector Popup, Persistent Sessions & Audit Logging
 ═══════════════════════════════════════════════════ */
 
 'use strict';
@@ -25,11 +25,12 @@ let isOnline       = false;
 let currentUser    = null;  // { id, email }
 let currentProfile = { role: 'GUEST', email: '', name: 'Guest' };
 
-let bsModal        = null;  // Member Add/Edit Modal
-let bsAuthModal    = null;  // Login/Signup Modal
-let bsAccountModal = null;  // Account Profile Modal
-let bsRejectModal  = null;  // Reject Note Modal
-let bsToast        = null;
+let bsModal               = null;  // Member Add/Edit Modal
+let bsAuthModal           = null;  // Login/Signup Modal
+let bsAccountModal        = null;  // Account Profile Modal
+let bsRejectModal         = null;  // Reject Note Modal
+let bsGoogleAccountModal  = null;  // Google Account Chooser Popup Modal
+let bsToast               = null;
 
 let pendingChangesList = [];
 let auditLogList       = [];
@@ -39,13 +40,14 @@ let userProfilesList   = [];
    INIT
 ══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[INIT] Starting Team Profile Hub v5.0...');
+  console.log('[INIT] Starting Team Profile Hub v6.0...');
 
-  bsModal        = new bootstrap.Modal(document.getElementById('profileModal'));
-  bsAuthModal    = new bootstrap.Modal(document.getElementById('authModal'));
-  bsAccountModal = new bootstrap.Modal(document.getElementById('accountModal'));
-  bsRejectModal  = new bootstrap.Modal(document.getElementById('rejectNoteModal'));
-  bsToast        = new bootstrap.Toast(document.getElementById('appToast'), { delay: 3500 });
+  bsModal              = new bootstrap.Modal(document.getElementById('profileModal'));
+  bsAuthModal          = new bootstrap.Modal(document.getElementById('authModal'));
+  bsAccountModal       = new bootstrap.Modal(document.getElementById('accountModal'));
+  bsRejectModal        = new bootstrap.Modal(document.getElementById('rejectNoteModal'));
+  bsGoogleAccountModal = new bootstrap.Modal(document.getElementById('googleAccountModal'));
+  bsToast              = new bootstrap.Toast(document.getElementById('appToast'), { delay: 3500 });
 
   applyTheme(localStorage.getItem('tph_theme') === 'dark');
   restoreSession();
@@ -413,7 +415,7 @@ function switchView(targetViewId) {
 }
 
 /* ══════════════════════════════════════════════════
-   PROFILE PANEL (SLIDE-OVER DRAWER)
+   PROFILE PANEL (CENTERED MODAL)
 ══════════════════════════════════════════════════ */
 function openProfile(id) {
   if (currentProfile.role === 'PENDING') {
@@ -1004,7 +1006,7 @@ async function deleteUserRegistration(id) {
 }
 
 /* ══════════════════════════════════════════════════
-   AUTH MODAL, GOOGLE AUTH & PERSISTENT CREDENTIALS
+   AUTH MODAL, GOOGLE / APPLE OAUTH & POPUP PICKER
 ══════════════════════════════════════════════════ */
 function openAuthModal(mode = 'login') {
   const title = document.getElementById('authModalTitle');
@@ -1091,21 +1093,9 @@ async function handleGoogleAuth() {
       });
       if (error) throw error;
     } else {
-      // Prompt for or generate Google Account email
-      const promptEmail = prompt('Enter your Google Email address:', 'user.google@gmail.com');
-      if (!promptEmail) return;
-
-      const cleanEmail = promptEmail.trim().toLowerCase();
-      const res = await api('POST', '/auth/google', { email: cleanEmail, name: cleanEmail.split('@')[0] });
-
-      saveSession(res.session, res.user, res.profile);
+      // Open Google Account Picker Modal
       bsAuthModal.hide();
-
-      if (res.profile.role === 'PENDING') {
-        toast('⏳ Google registration received! Account is pending Admin approval.', 'info');
-      } else {
-        toast(`👋 Logged in with Google (${cleanEmail})`, 'success');
-      }
+      bsGoogleAccountModal.show();
     }
   } catch (err) {
     if (errorEl) {
@@ -1114,6 +1104,40 @@ async function handleGoogleAuth() {
     } else {
       toast('Google Auth error: ' + err.message, 'error');
     }
+  }
+}
+
+async function handleSelectGoogleAccount(email, name) {
+  try {
+    const res = await api('POST', '/auth/google', { email, name });
+    saveSession(res.session, res.user, res.profile);
+    bsGoogleAccountModal.hide();
+
+    if (res.profile.role === 'PENDING') {
+      toast('⏳ Google account registered! Pending Admin approval.', 'info');
+    } else {
+      toast(`👋 Signed in as ${name || email}`, 'success');
+    }
+  } catch (err) {
+    toast('Google Sign-In failed: ' + err.message, 'error');
+  }
+}
+
+async function handleAppleAuth() {
+  const appleEmail = prompt('Enter your Apple ID Email:', 'user.apple@icloud.com');
+  if (!appleEmail) return;
+  try {
+    const res = await api('POST', '/auth/google', { email: appleEmail.trim(), name: 'Apple User' });
+    saveSession(res.session, res.user, res.profile);
+    bsAuthModal.hide();
+
+    if (res.profile.role === 'PENDING') {
+      toast('⏳ Apple account registered! Pending Admin approval.', 'info');
+    } else {
+      toast(`👋 Signed in with Apple (${appleEmail})`, 'success');
+    }
+  } catch (err) {
+    toast('Apple Auth error: ' + err.message, 'error');
   }
 }
 
@@ -1197,6 +1221,20 @@ function bindEvents() {
   document.getElementById('demoAdminBtn').addEventListener('click', () => loginAsDemo('ADMIN'));
   document.getElementById('demoMemberBtn').addEventListener('click', () => loginAsDemo('MEMBER'));
   document.getElementById('googleAuthBtn')?.addEventListener('click', handleGoogleAuth);
+  document.getElementById('appleAuthBtn')?.addEventListener('click', handleAppleAuth);
+
+  document.querySelectorAll('.google-account-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      handleSelectGoogleAccount(btn.dataset.email, btn.dataset.name);
+    });
+  });
+
+  document.getElementById('googleCustomAccountBtn')?.addEventListener('click', () => {
+    const customEmail = prompt('Enter your Google email address:', 'user.custom@gmail.com');
+    if (customEmail) {
+      handleSelectGoogleAccount(customEmail.trim(), customEmail.split('@')[0]);
+    }
+  });
 
   document.getElementById('pendingLogoutBtn')?.addEventListener('click', () => {
     clearSession();
