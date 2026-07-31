@@ -34,7 +34,7 @@ let memAudit = [
   }
 ];
 
-// Helper functions for in-memory audit logging
+// Helper function for in-memory audit logging
 function logAuditInMemory(actionType, actor, targetRecord, beforeVal = null, afterVal = null) {
   const logEntry = {
     id: memAudit.length + 1,

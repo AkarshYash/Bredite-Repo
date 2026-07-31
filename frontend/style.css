@@ -165,6 +165,7 @@ a { color: inherit; text-decoration: none; }
 }
 .role-pill.admin { background: #fee2e2; color: #dc2626; }
 .role-pill.member { background: #e0e7ff; color: #4338ca; }
+.role-pill.pending { background: #fef3c7; color: #d97706; }
 .role-pill.guest { background: #f1f5f9; color: #64748b; }
 
 /* ══════════════ MAIN ══════════════ */

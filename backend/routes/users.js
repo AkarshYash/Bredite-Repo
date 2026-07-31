@@ -24,14 +24,15 @@ router.get('/', requireAdmin, async (req, res, next) => {
   }
 });
 
-// ── PUT /api/users/:id/role ───────── (ADMIN only: role promotion) ───
+// ── PUT /api/users/:id/role ───────── (ADMIN only: user approval & role management)
 router.put('/:id/role', requireAdmin, async (req, res, next) => {
   try {
     const targetUserId = req.params.id;
     const { role } = req.body;
 
-    if (!['ADMIN', 'MEMBER'].includes(role)) {
-      return res.status(400).json({ error: 'Role must be ADMIN or MEMBER.' });
+    const validRoles = ['ADMIN', 'MEMBER', 'PENDING', 'REJECTED'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: `Role must be one of: ${validRoles.join(', ')}.` });
     }
 
     const adminEmail = req.profile.email || req.user.email;
@@ -46,7 +47,7 @@ router.put('/:id/role', requireAdmin, async (req, res, next) => {
       const afterVal = store.getMemProfiles()[idx];
 
       store.logAuditInMemory('promote_user', adminEmail, targetUserId, beforeVal, afterVal);
-      return res.json({ message: `Role updated to ${role}`, data: afterVal });
+      return res.json({ message: `User role updated to ${role}`, data: afterVal });
     }
 
     const { data: beforeData } = await dbClient
@@ -73,7 +74,42 @@ router.put('/:id/role', requireAdmin, async (req, res, next) => {
       after_value: updatedProfile
     }]);
 
-    res.json({ message: `Role updated to ${role}`, data: updatedProfile });
+    res.json({ message: `User role updated to ${role}`, data: updatedProfile });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── DELETE /api/users/:id ─────────── (ADMIN only: reject/delete registration)
+router.delete('/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const targetUserId = req.params.id;
+    const adminEmail = req.profile.email || req.user.email;
+
+    const dbClient = supabaseAdmin || supabase;
+    if (!dbClient) {
+      const idx = store.getMemProfiles().findIndex(p => p.id === targetUserId);
+      if (idx === -1) return res.status(404).json({ error: 'User profile not found.' });
+
+      const deletedVal = store.getMemProfiles()[idx];
+      store.setMemProfiles(store.getMemProfiles().filter(p => p.id !== targetUserId));
+      store.logAuditInMemory('delete_user', adminEmail, targetUserId, deletedVal, null);
+      return res.json({ message: 'User registration deleted successfully.' });
+    }
+
+    const { data: beforeData } = await dbClient.from('profiles').select('*').eq('id', targetUserId).single();
+    const { error } = await dbClient.from('profiles').delete().eq('id', targetUserId);
+    if (error) return res.status(404).json({ error: 'User profile not found.' });
+
+    await dbClient.from('audit_log').insert([{
+      action_type: 'delete_user',
+      actor: adminEmail,
+      target_record: targetUserId,
+      before_value: beforeData,
+      after_value: null
+    }]);
+
+    res.json({ message: 'User registration deleted successfully.' });
   } catch (err) {
     next(err);
   }

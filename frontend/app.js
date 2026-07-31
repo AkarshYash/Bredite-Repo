@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════
    TEAM PROFILE HUB  –  app.js
-   Full frontend with Auth, RBAC, Approval Workflow & Audit Log
+   Full frontend with Auth, RBAC, User Registration Approval Workflow,
+   Google Sign-In, Persistent Sessions & Audit Logging
 ═══════════════════════════════════════════════════ */
 
 'use strict';
@@ -14,6 +15,7 @@ const API_TIMEOUT_MS = 6000;
 const LS_KEY       = 'tph_offline_data';
 const LS_TOKEN     = 'tph_access_token';
 const LS_USER      = 'tph_user_info';
+const LS_CREDS     = 'tph_saved_credentials';
 
 /* ── State ────────────────────────────────────────── */
 let teamData       = [];
@@ -37,7 +39,7 @@ let userProfilesList   = [];
    INIT
 ══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[INIT] Starting Team Profile Hub v4.0...');
+  console.log('[INIT] Starting Team Profile Hub v5.0...');
 
   bsModal        = new bootstrap.Modal(document.getElementById('profileModal'));
   bsAuthModal    = new bootstrap.Modal(document.getElementById('authModal'));
@@ -219,6 +221,14 @@ async function fetchUsersList() {
   try {
     const { data } = await api('GET', '/users');
     userProfilesList = data || [];
+
+    const pendingUsers = userProfilesList.filter(u => u.role === 'PENDING');
+    const badge = document.getElementById('pendingUsersBadge');
+    if (badge) {
+      badge.textContent = pendingUsers.length;
+      badge.classList.toggle('d-none', pendingUsers.length === 0);
+    }
+
     renderUsersTable();
   } catch (e) {
     toast('Error fetching user roles: ' + e.message, 'error');
@@ -233,6 +243,19 @@ function getLocalCache()   { try { return JSON.parse(localStorage.getItem(LS_KEY
 ══════════════════════════════════════════════════ */
 function renderCards(filter = '') {
   const grid = document.getElementById('teamGrid');
+
+  // Check if current user is PENDING approval
+  if (currentProfile.role === 'PENDING') {
+    grid.innerHTML = `
+      <div class="empty-state py-5 my-4">
+        <i class="bi bi-hourglass-split text-warning display-3"></i>
+        <h4 class="fw-bold mt-3">Account Registration Pending Approval</h4>
+        <p class="text-muted max-w-500 mx-auto">Your account (<strong>${escHtml(currentUser?.email || '')}</strong>) has been registered and is currently waiting for Admin approval. Consultant data will unlock as soon as an Admin approves your account.</p>
+        <button class="btn btn-outline-primary btn-sm mt-2" onclick="openAuthModal('login')"><i class="bi bi-person-lock me-1"></i> Switch Account</button>
+      </div>`;
+    return;
+  }
+
   const q    = filter.trim().toLowerCase();
   const list = teamData.filter(p =>
     !q ||
@@ -317,14 +340,14 @@ function renderAuthWidget() {
   if (!currentUser) {
     container.innerHTML = `
       <button class="btn-icon-pill" id="openAuthModalBtn">
-        <i class="bi bi-person-lock"></i> Sign In
+        <i class="bi bi-person-lock"></i> Sign In / Register
       </button>`;
     document.getElementById('openAuthModalBtn')?.addEventListener('click', () => openAuthModal('login'));
     return;
   }
 
   const role = currentProfile.role || 'MEMBER';
-  const roleClass = role === 'ADMIN' ? 'admin' : 'member';
+  const roleClass = role === 'ADMIN' ? 'admin' : role === 'PENDING' ? 'pending' : 'member';
   const initials = getInitials(currentProfile.name || currentUser.email);
 
   container.innerHTML = `
@@ -339,11 +362,25 @@ function renderAuthWidget() {
 
 function updateUIForRole() {
   const role = currentProfile.role || 'GUEST';
-  const isAdmin  = role === 'ADMIN';
-  const isMember = role === 'MEMBER';
+  const isAdmin   = role === 'ADMIN';
+  const isMember  = role === 'MEMBER';
+  const isPending = role === 'PENDING';
+
+  // Toggle Pending Banner
+  const banner = document.getElementById('pendingUserBanner');
+  if (banner) {
+    if (isPending) {
+      banner.classList.remove('d-none');
+      document.getElementById('pendingUserName').textContent  = currentProfile.name || currentUser.email;
+      document.getElementById('pendingUserEmail').textContent = currentUser.email;
+    } else {
+      banner.classList.add('d-none');
+    }
+  }
 
   document.getElementById('navAuditBtn')?.classList.toggle('d-none', !isAdmin);
   document.getElementById('navUsersBtn')?.classList.toggle('d-none', !isAdmin);
+  document.getElementById('addNewBtn')?.classList.toggle('d-none', isPending);
 
   document.getElementById('modalRoleAlert')?.classList.toggle('d-none', !isMember);
 
@@ -356,6 +393,8 @@ function updateUIForRole() {
   const delBtnText  = document.getElementById('delBtnText');
   if (editBtnText) editBtnText.textContent = isAdmin ? 'Edit' : 'Propose Edit';
   if (delBtnText)  delBtnText.textContent  = isAdmin ? 'Delete' : 'Propose Delete';
+
+  renderCards();
 }
 
 function switchView(targetViewId) {
@@ -377,6 +416,10 @@ function switchView(targetViewId) {
    PROFILE PANEL (SLIDE-OVER DRAWER)
 ══════════════════════════════════════════════════ */
 function openProfile(id) {
+  if (currentProfile.role === 'PENDING') {
+    toast('Account is pending Admin approval', 'warn');
+    return;
+  }
   const p = teamData.find(m => m.id === id);
   if (!p) return;
   currentMember = p;
@@ -567,6 +610,10 @@ function openAddModal() {
     openAuthModal('login');
     return;
   }
+  if (currentProfile.role === 'PENDING') {
+    toast('Your account is pending Admin approval', 'warn');
+    return;
+  }
   document.getElementById('editId').value = '';
   document.getElementById('modalTitle').innerHTML = '<i class="bi bi-person-plus-fill me-2"></i>Add New Member';
   document.getElementById('profileForm').reset();
@@ -578,6 +625,10 @@ function openEditModal(p) {
   if (!currentUser) {
     toast('Please sign in to edit or propose a change', 'info');
     openAuthModal('login');
+    return;
+  }
+  if (currentProfile.role === 'PENDING') {
+    toast('Your account is pending Admin approval', 'warn');
     return;
   }
   document.getElementById('editId').value = p.id;
@@ -858,7 +909,7 @@ async function confirmReject() {
 }
 
 /* ══════════════════════════════════════════════════
-   ACTIVITY LOG & USERS TABLE
+   ACTIVITY LOG & USERS TABLE (APPROVAL WORKFLOW)
 ══════════════════════════════════════════════════ */
 function renderAuditTable() {
   const tbody = document.getElementById('auditTableBody');
@@ -892,34 +943,68 @@ function renderUsersTable() {
     return;
   }
 
-  tbody.innerHTML = userProfilesList.map(u => `
-    <tr>
+  tbody.innerHTML = userProfilesList.map(u => {
+    const isPending = u.role === 'PENDING';
+    const roleBadge = isPending
+      ? `<span class="role-pill pending"><i class="bi bi-hourglass-split"></i> PENDING APPROVAL</span>`
+      : u.role === 'ADMIN'
+      ? `<span class="role-pill admin">ADMIN</span>`
+      : `<span class="role-pill member">MEMBER</span>`;
+
+    return `
+    <tr class="${isPending ? 'table-warning' : ''}">
       <td class="fw-bold">${escHtml(u.email)}</td>
       <td>${escHtml(u.name || '—')}</td>
-      <td><span class="role-pill ${u.role === 'ADMIN' ? 'admin' : 'member'}">${escHtml(u.role)}</span></td>
+      <td>${roleBadge}</td>
       <td class="small text-muted">${new Date(u.created_at).toLocaleDateString()}</td>
       <td>
-        ${u.role === 'MEMBER'
-          ? `<button class="btn btn-sm btn-outline-danger" onclick="promoteUser('${u.id}', 'ADMIN')">Promote to ADMIN</button>`
-          : `<button class="btn btn-sm btn-outline-secondary" onclick="promoteUser('${u.id}', 'MEMBER')">Demote to MEMBER</button>`
-        }
+        ${isPending ? `
+          <button class="btn btn-sm btn-success fw-bold me-1" onclick="promoteUser('${u.id}', 'MEMBER')">
+            <i class="bi bi-check-circle-fill"></i> Approve as MEMBER
+          </button>
+          <button class="btn btn-sm btn-outline-danger fw-bold me-1" onclick="promoteUser('${u.id}', 'ADMIN')">
+            <i class="bi bi-shield-lock-fill"></i> Approve as ADMIN
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="deleteUserRegistration('${u.id}')">
+            <i class="bi bi-x-lg"></i> Reject
+          </button>
+        ` : `
+          ${u.role === 'MEMBER'
+            ? `<button class="btn btn-sm btn-outline-danger me-1" onclick="promoteUser('${u.id}', 'ADMIN')">Promote to ADMIN</button>`
+            : `<button class="btn btn-sm btn-outline-secondary me-1" onclick="promoteUser('${u.id}', 'MEMBER')">Demote to MEMBER</button>`
+          }
+          <button class="btn btn-sm btn-outline-secondary" onclick="deleteUserRegistration('${u.id}')" title="Revoke User"><i class="bi bi-trash"></i></button>
+        `}
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 async function promoteUser(id, newRole) {
-  if (!confirm(`Change role of user to ${newRole}?`)) return;
+  const actionText = newRole === 'MEMBER' ? 'Approve user as MEMBER' : `Set user role to ${newRole}`;
+  if (!confirm(`${actionText}?`)) return;
   try {
     await api('PUT', `/users/${id}/role`, { role: newRole });
-    toast(`User role updated to ${newRole}`, 'success');
+    toast(`✅ User status updated to ${newRole}`, 'success');
     fetchUsersList();
   } catch (e) {
     toast('Role update failed: ' + e.message, 'error');
   }
 }
 
+async function deleteUserRegistration(id) {
+  if (!confirm('Reject and delete this user registration?')) return;
+  try {
+    await api('DELETE', `/users/${id}`);
+    toast('User registration rejected & removed', 'info');
+    fetchUsersList();
+  } catch (e) {
+    toast('Delete failed: ' + e.message, 'error');
+  }
+}
+
 /* ══════════════════════════════════════════════════
-   AUTH MODAL & DEMO LOGINS
+   AUTH MODAL, GOOGLE AUTH & PERSISTENT CREDENTIALS
 ══════════════════════════════════════════════════ */
 function openAuthModal(mode = 'login') {
   const title = document.getElementById('authModalTitle');
@@ -927,7 +1012,7 @@ function openAuthModal(mode = 'login') {
   const nameGroup = document.getElementById('signupNameGroup');
 
   if (mode === 'signup') {
-    title.innerHTML = '<i class="bi bi-person-plus-fill text-primary me-2"></i>Create Account';
+    title.innerHTML = '<i class="bi bi-person-plus-fill text-primary me-2"></i>Create New Account';
     submitBtn.textContent = 'Register Account';
     nameGroup.classList.remove('d-none');
     document.getElementById('tabSignupBtn').classList.add('active');
@@ -942,6 +1027,18 @@ function openAuthModal(mode = 'login') {
 
   document.getElementById('authErrorAlert').classList.add('d-none');
   document.getElementById('authForm').reset();
+
+  // Restore saved email/password if "Remember me" was checked
+  try {
+    const saved = localStorage.getItem(LS_CREDS);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.email) document.getElementById('authEmailInput').value = parsed.email;
+      if (parsed.password) document.getElementById('authPasswordInput').value = parsed.password;
+      document.getElementById('authRememberCheck').checked = !!parsed.remember;
+    }
+  } catch (e) {}
+
   bsAuthModal.show();
 }
 
@@ -952,8 +1049,11 @@ function openAccountModal() {
   document.getElementById('accAvatar').textContent = getInitials(currentProfile.name || currentUser.email);
 
   const badge = document.getElementById('accRoleBadge');
-  badge.textContent = currentProfile.role || 'MEMBER';
-  badge.className = `badge rounded-pill px-3 py-2 fs-6 ${currentProfile.role === 'ADMIN' ? 'bg-danger' : 'bg-primary'}`;
+  const role = currentProfile.role || 'MEMBER';
+  badge.textContent = role;
+  badge.className = `badge rounded-pill px-3 py-2 fs-6 ${
+    role === 'ADMIN' ? 'bg-danger' : role === 'PENDING' ? 'bg-warning text-dark' : 'bg-primary'
+  }`;
 
   bsAccountModal.show();
 }
@@ -991,22 +1091,21 @@ async function handleGoogleAuth() {
       });
       if (error) throw error;
     } else {
-      console.log('[AUTH] Executing Demo Google OAuth...');
-      const googleUser = {
-        id: 'google-user-' + Date.now(),
-        email: 'google.user@example.com'
-      };
-      const googleProfile = {
-        id: googleUser.id,
-        email: googleUser.email,
-        name: 'Google User',
-        role: 'MEMBER'
-      };
-      const session = { access_token: 'mock-google-token' };
+      // Prompt for or generate Google Account email
+      const promptEmail = prompt('Enter your Google Email address:', 'user.google@gmail.com');
+      if (!promptEmail) return;
 
-      saveSession(session, googleUser, googleProfile);
+      const cleanEmail = promptEmail.trim().toLowerCase();
+      const res = await api('POST', '/auth/google', { email: cleanEmail, name: cleanEmail.split('@')[0] });
+
+      saveSession(res.session, res.user, res.profile);
       bsAuthModal.hide();
-      toast('👋 Signed in with Google (google.user@example.com)', 'success');
+
+      if (res.profile.role === 'PENDING') {
+        toast('⏳ Google registration received! Account is pending Admin approval.', 'info');
+      } else {
+        toast(`👋 Logged in with Google (${cleanEmail})`, 'success');
+      }
     }
   } catch (err) {
     if (errorEl) {
@@ -1024,6 +1123,7 @@ async function handleAuthSubmit(e) {
   const email    = document.getElementById('authEmailInput').value.trim();
   const password = document.getElementById('authPasswordInput').value.trim();
   const name     = document.getElementById('authNameInput').value.trim();
+  const remember = document.getElementById('authRememberCheck').checked;
   const errorEl  = document.getElementById('authErrorAlert');
   const spinner  = document.getElementById('authSpinner');
 
@@ -1035,9 +1135,21 @@ async function handleAuthSubmit(e) {
     const payload  = isSignup ? { email, password, name } : { email, password };
     const res = await api('POST', endpoint, payload);
 
+    // Persistent login logic
+    if (remember) {
+      localStorage.setItem(LS_CREDS, JSON.stringify({ email, password, remember: true }));
+    } else {
+      localStorage.removeItem(LS_CREDS);
+    }
+
     saveSession(res.session, res.user, res.profile);
     bsAuthModal.hide();
-    toast(isSignup ? '🎉 Registration successful!' : '👋 Welcome back!', 'success');
+
+    if (res.profile?.role === 'PENDING') {
+      toast('⏳ Account registered! Waiting for Admin approval before accessing data.', 'info');
+    } else {
+      toast(isSignup ? '🎉 Registration successful!' : '👋 Welcome back!', 'success');
+    }
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove('d-none');
@@ -1085,6 +1197,11 @@ function bindEvents() {
   document.getElementById('demoAdminBtn').addEventListener('click', () => loginAsDemo('ADMIN'));
   document.getElementById('demoMemberBtn').addEventListener('click', () => loginAsDemo('MEMBER'));
   document.getElementById('googleAuthBtn')?.addEventListener('click', handleGoogleAuth);
+
+  document.getElementById('pendingLogoutBtn')?.addEventListener('click', () => {
+    clearSession();
+    toast('Signed out', 'info');
+  });
 
   document.getElementById('accLogoutBtn').addEventListener('click', () => {
     bsAccountModal.hide();

@@ -8,7 +8,7 @@ const store = require('../store');
 // ── Strict Rate Limiting on Auth Endpoints ────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts. Please try again after 15 minutes.' }
@@ -16,6 +16,15 @@ const authLimiter = rateLimit({
 
 router.use('/signup', authLimiter);
 router.use('/login', authLimiter);
+router.use('/google', authLimiter);
+
+// Helper to determine initial role (pre-approved vs pending)
+function getInitialRole(email) {
+  const clean = (email || '').toLowerCase();
+  if (clean === 'admin@teamprofilehub.com') return 'ADMIN';
+  if (clean === 'member@teamprofilehub.com') return 'MEMBER';
+  return 'PENDING'; // New user registrations start as PENDING for Admin approval
+}
 
 // ── POST /api/auth/signup ─────────────────────────────────────────────
 router.post('/signup', async (req, res, next) => {
@@ -30,6 +39,7 @@ router.post('/signup', async (req, res, next) => {
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanName  = (name || '').trim() || cleanEmail.split('@')[0];
+    const initialRole = getInitialRole(cleanEmail);
 
     // Supabase Auth Signup
     if (supabase) {
@@ -50,7 +60,7 @@ router.post('/signup', async (req, res, next) => {
         return res.status(400).json({ error: 'User registration failed.' });
       }
 
-      // Ensure profile exists in database
+      // Ensure profile exists in database with initialRole
       let profile = null;
       if (supabaseAdmin) {
         const { data: profData } = await supabaseAdmin
@@ -62,7 +72,7 @@ router.post('/signup', async (req, res, next) => {
         if (!profData) {
           const { data: newProf } = await supabaseAdmin
             .from('profiles')
-            .insert([{ id: user.id, email: cleanEmail, name: cleanName, role: 'MEMBER' }])
+            .insert([{ id: user.id, email: cleanEmail, name: cleanName, role: initialRole }])
             .select()
             .single();
           profile = newProf;
@@ -75,15 +85,17 @@ router.post('/signup', async (req, res, next) => {
           action_type: 'user_signup',
           actor: cleanEmail,
           target_record: user.id,
-          after_value: { email: cleanEmail, name: cleanName, role: 'MEMBER' }
+          after_value: { email: cleanEmail, name: cleanName, role: profile?.role || initialRole }
         }]);
       }
 
       return res.status(201).json({
-        message: 'Registration successful!',
+        message: initialRole === 'PENDING'
+          ? 'Registration received! Your account is pending Admin approval.'
+          : 'Registration successful!',
         session: data.session,
         user,
-        profile: profile || { id: user.id, email: cleanEmail, name: cleanName, role: 'MEMBER' }
+        profile: profile || { id: user.id, email: cleanEmail, name: cleanName, role: initialRole }
       });
     }
 
@@ -98,17 +110,18 @@ router.post('/signup', async (req, res, next) => {
       id: userId,
       email: cleanEmail,
       name: cleanName,
-      role: 'MEMBER',
+      role: initialRole,
       created_at: new Date().toISOString()
     };
     store.getMemProfiles().push(mockProfile);
 
-    // Mock token
-    const mockToken = Buffer.from(JSON.stringify({ id: userId, email: cleanEmail, name: cleanName, role: 'MEMBER' })).toString('base64');
-    store.logAuditInMemory('user_signup', cleanEmail, userId, null, { email: cleanEmail, role: 'MEMBER' });
+    const mockToken = Buffer.from(JSON.stringify(mockProfile)).toString('base64');
+    store.logAuditInMemory('user_signup', cleanEmail, userId, null, { email: cleanEmail, role: initialRole });
 
     return res.status(201).json({
-      message: 'Registration successful (offline mode)',
+      message: initialRole === 'PENDING'
+        ? 'Registration received! Your account is pending Admin approval.'
+        : 'Registration successful!',
       session: { access_token: mockToken, token_type: 'bearer' },
       user: { id: userId, email: cleanEmail },
       profile: mockProfile
@@ -162,7 +175,7 @@ router.post('/login', async (req, res, next) => {
         message: 'Login successful!',
         session: data.session,
         user,
-        profile: profile || { id: user.id, email: user.email, role: 'MEMBER' }
+        profile: profile || { id: user.id, email: user.email, role: getInitialRole(cleanEmail) }
       });
     }
 
@@ -176,9 +189,53 @@ router.post('/login', async (req, res, next) => {
     store.logAuditInMemory('user_login', cleanEmail, profile.id);
 
     return res.json({
-      message: 'Login successful (offline mode)',
+      message: 'Login successful!',
       session: { access_token: mockToken, token_type: 'bearer' },
       user: { id: profile.id, email: profile.email },
+      profile
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/auth/google ─────────────────────────────────────────────
+router.post('/google', async (req, res, next) => {
+  try {
+    const { email, name } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Google email is required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName  = (name || '').trim() || cleanEmail.split('@')[0];
+
+    // Check if profile exists
+    let profile = store.getMemProfiles().find(p => p.email === cleanEmail);
+    if (!profile) {
+      const initialRole = getInitialRole(cleanEmail);
+      const userId = 'google-user-' + Date.now();
+      profile = {
+        id: userId,
+        email: cleanEmail,
+        name: cleanName,
+        role: initialRole,
+        created_at: new Date().toISOString()
+      };
+      store.getMemProfiles().push(profile);
+      store.logAuditInMemory('user_google_signup', cleanEmail, userId, null, { email: cleanEmail, role: initialRole });
+    } else {
+      store.logAuditInMemory('user_google_login', cleanEmail, profile.id);
+    }
+
+    const mockToken = Buffer.from(JSON.stringify(profile)).toString('base64');
+
+    return res.json({
+      message: profile.role === 'PENDING'
+        ? 'Google sign-in received! Account is pending Admin approval.'
+        : 'Google sign-in successful!',
+      session: { access_token: mockToken, token_type: 'bearer' },
+      user: { id: profile.id, email: cleanEmail },
       profile
     });
   } catch (err) {
