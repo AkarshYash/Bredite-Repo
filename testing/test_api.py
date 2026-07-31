@@ -136,5 +136,47 @@ def test_non_admin_cannot_access_audit_log_or_users():
     res_users = requests.get(f"{BASE_URL}/users", headers=MEMBER_HEADERS, timeout=5)
     assert res_users.status_code == 403
 
+# ── 7. User Registration Approval Workflow ─────────────────────────────
+def test_user_registration_approval_workflow():
+    new_user_email = f"pending_user_{os.getpid()}@example.com"
+    password = "TestPassword123!"
+
+    # 1. Register new user
+    signup_res = requests.post(f"{BASE_URL}/auth/signup", json={
+        "email": new_user_email,
+        "password": password,
+        "name": "Pending Approval User"
+    }, timeout=5)
+
+    assert signup_res.status_code == 201
+    profile = signup_res.json().get("profile", {})
+    user_id = profile.get("id")
+    assert profile.get("role") == "PENDING"
+
+    # 2. Admin views users list
+    users_res = requests.get(f"{BASE_URL}/users", headers=ADMIN_HEADERS, timeout=5)
+    assert users_res.status_code == 200
+    user_list = users_res.json().get("data", [])
+    assert any(u.get("email") == new_user_email for u in user_list)
+
+    # 3. Admin approves user registration as MEMBER
+    approve_res = requests.put(f"{BASE_URL}/users/{user_id}/role", json={"role": "MEMBER"}, headers=ADMIN_HEADERS, timeout=5)
+    assert approve_res.status_code == 200
+    assert approve_res.json()["data"]["role"] == "MEMBER"
+
+# ── 8. Google Authentication Endpoint ─────────────────────────────────
+def test_google_auth_endpoint():
+    google_email = f"google_user_{os.getpid()}@example.com"
+    res = requests.post(f"{BASE_URL}/auth/google", json={
+        "email": google_email,
+        "name": "Google Test User"
+    }, timeout=5)
+
+    assert res.status_code == 200
+    data = res.json()
+    assert "session" in data
+    assert "profile" in data
+    assert data["profile"]["email"] == google_email
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
