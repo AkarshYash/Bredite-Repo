@@ -5,7 +5,11 @@ const rateLimit  = require('express-rate-limit');
 const path       = require('path');
 require('dotenv').config();
 
+const authRouter    = require('./routes/auth');
 const membersRouter = require('./routes/members');
+const pendingRouter = require('./routes/pending');
+const auditRouter   = require('./routes/audit');
+const usersRouter   = require('./routes/users');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -16,7 +20,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://cdn.jsdelivr.net", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
@@ -33,14 +37,14 @@ app.use(cors({
 // ── Rate limiting ─────────────────────────────────────────────────────
 app.use('/api', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
 }));
 
 // ── Body parsing ──────────────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // ── Serve frontend static files ───────────────────────────────────────
@@ -64,7 +68,12 @@ if (require('fs').existsSync(frontendPath)) {
 }
 
 // ── API Routes ────────────────────────────────────────────────────────
+app.use('/api/auth', authRouter);
 app.use('/api/members', membersRouter);
+app.use('/api/pending-changes', pendingRouter);
+app.use('/api/audit-log', auditRouter);
+app.use('/api/users', usersRouter);
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
