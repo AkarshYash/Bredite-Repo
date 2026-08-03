@@ -4,11 +4,11 @@
    Get these from: https://supabase.com → Your Project → Settings → API
 ═══════════════════════════════════════════════════════════ */
 
-// Your Supabase Project URL
-window.SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+// Your Supabase Project URL (leave empty for demo mode)
+window.SUPABASE_URL = '';
 
-// Your Supabase Anon/Public Key
-window.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+// Your Supabase Anon/Public Key (leave empty for demo mode)
+window.SUPABASE_ANON_KEY = '';
 
 /* ═══════════════════════════════════════════════════════════
    SETUP INSTRUCTIONS:

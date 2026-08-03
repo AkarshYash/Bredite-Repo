@@ -15,10 +15,18 @@ let supabaseClient = null;
 document.addEventListener('DOMContentLoaded', () => {
   console.log('[AUTH] Initializing...');
   
-  // Initialize Supabase if configured
-  if (typeof window.supabase !== 'undefined' && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-    supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    console.log('[AUTH] Supabase initialized');
+  // Initialize Supabase if configured (optional)
+  try {
+    if (typeof window.supabase !== 'undefined' && window.SUPABASE_URL && window.SUPABASE_ANON_KEY && 
+        window.SUPABASE_URL !== '' && window.SUPABASE_ANON_KEY !== '' &&
+        !window.SUPABASE_URL.includes('YOUR_SUPABASE')) {
+      supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      console.log('[AUTH] Supabase initialized');
+    } else {
+      console.log('[AUTH] Running in demo mode without Supabase');
+    }
+  } catch (err) {
+    console.warn('[AUTH] Could not initialize Supabase:', err);
   }
   
   initThemeSwitcher();
