@@ -24,6 +24,13 @@ let memProfiles = [
     name: 'Akarsh Chaturvedi',
     role: 'ADMIN',
     created_at: new Date().toISOString()
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000004',
+    email: 'akarsh.c@brudite.com',
+    name: 'Akarsh C',
+    role: 'MEMBER',
+    created_at: new Date().toISOString()
   }
 ];
 
