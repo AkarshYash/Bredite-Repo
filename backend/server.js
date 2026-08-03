@@ -5,11 +5,14 @@ const rateLimit  = require('express-rate-limit');
 const path       = require('path');
 require('dotenv').config();
 
-const authRouter    = require('./routes/auth');
-const membersRouter = require('./routes/members');
-const pendingRouter = require('./routes/pending');
-const auditRouter   = require('./routes/audit');
-const usersRouter   = require('./routes/users');
+const authRouter     = require('./routes/auth');
+const membersRouter  = require('./routes/members');
+const pendingRouter  = require('./routes/pending');
+const auditRouter    = require('./routes/audit');
+const usersRouter    = require('./routes/users');
+const profileRouter  = require('./routes/profile');
+const otpRouter      = require('./routes/otp');
+const securityRouter = require('./routes/security');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -73,6 +76,9 @@ app.use('/api/members', membersRouter);
 app.use('/api/pending-changes', pendingRouter);
 app.use('/api/audit-log', auditRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/profile', profileRouter);
+app.use('/api/otp', otpRouter);
+app.use('/api/security', securityRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

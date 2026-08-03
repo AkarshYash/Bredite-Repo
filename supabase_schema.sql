@@ -3,34 +3,103 @@
 --  Paste into: Supabase Dashboard → SQL Editor → Run
 -- ═══════════════════════════════════════════════════════════════════
 
+-- ══════════════════════════════════════════════════════════════════
+-- STORAGE BUCKETS & POLICIES FOR PROFILE IMAGES
+-- ══════════════════════════════════════════════════════════════════
+
+-- Create avatars bucket for profile images
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'avatars',
+  'avatars',
+  true,
+  5242880, -- 5MB limit
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = EXCLUDED.public,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- Storage Policy: Anyone can view avatars (public bucket)
+CREATE POLICY "Avatar images are publicly accessible"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'avatars');
+
+-- Storage Policy: Authenticated users can upload their own avatar
+CREATE POLICY "Users can upload their own avatar"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'avatars' 
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Storage Policy: Users can update their own avatar
+CREATE POLICY "Users can update their own avatar"
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'avatars' 
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Storage Policy: Users can delete their own avatar
+CREATE POLICY "Users can delete their own avatar"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'avatars' 
+    AND auth.role() = 'authenticated'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ══════════════════════════════════════════════════════════════════
+-- DATABASE TABLES
+-- ══════════════════════════════════════════════════════════════════
+
 -- ── 1. PROFILES TABLE (Linked to auth.users) ─────────────────────────
 DROP TABLE IF EXISTS profiles CASCADE;
 CREATE TABLE profiles (
-  id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email      TEXT NOT NULL,
-  name       TEXT DEFAULT '',
-  role       TEXT NOT NULL DEFAULT 'MEMBER' CHECK (role IN ('ADMIN', 'MEMBER', 'GUEST')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  id              UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email           TEXT NOT NULL,
+  name            TEXT DEFAULT '',
+  role            TEXT NOT NULL DEFAULT 'MEMBER' CHECK (role IN ('ADMIN', 'MEMBER', 'GUEST', 'PENDING')),
+  avatar_url      TEXT DEFAULT '',
+  phone           TEXT DEFAULT '',
+  bio             TEXT DEFAULT '',
+  email_verified  BOOLEAN DEFAULT FALSE,
+  phone_verified  BOOLEAN DEFAULT FALSE,
+  two_factor_enabled BOOLEAN DEFAULT FALSE,
+  two_factor_secret TEXT DEFAULT '',
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Auto-create profile on signup
+-- Auto-create profile on signup (handles both email/password and OAuth)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, name, role)
+  INSERT INTO public.profiles (id, email, name, role, avatar_url)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    COALESCE(
+      NEW.raw_user_meta_data->>'full_name', 
+      NEW.raw_user_meta_data->>'name',
+      NEW.raw_user_meta_data->>'user_name',
+      split_part(NEW.email, '@', 1)
+    ),
     CASE 
       WHEN LOWER(NEW.email) = 'admin@teamprofilehub.com' THEN 'ADMIN'
       WHEN LOWER(NEW.email) = 'member@teamprofilehub.com' THEN 'MEMBER'
       WHEN LOWER(NEW.email) = 'chaturvediakarsh51@gmail.com' THEN 'ADMIN'
       ELSE 'PENDING'
-    END
+    END,
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', '')
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    name = COALESCE(EXCLUDED.name, profiles.name),
+    avatar_url = COALESCE(NULLIF(EXCLUDED.avatar_url, ''), profiles.avatar_url);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -134,11 +203,60 @@ CREATE TABLE audit_log (
   timestamp     TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ── 5. ROW LEVEL SECURITY (RLS) POLICIES ──────────────────────────────
+-- ── 5. LOGIN HISTORY TABLE ────────────────────────────────────────────
+DROP TABLE IF EXISTS login_history CASCADE;
+CREATE TABLE login_history (
+  id            BIGSERIAL PRIMARY KEY,
+  user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  email         TEXT NOT NULL,
+  login_method  TEXT DEFAULT 'email' CHECK (login_method IN ('email', 'google', 'github', 'apple')),
+  ip_address    TEXT DEFAULT '',
+  user_agent    TEXT DEFAULT '',
+  device_info   TEXT DEFAULT '',
+  location      TEXT DEFAULT '',
+  success       BOOLEAN DEFAULT TRUE,
+  failure_reason TEXT DEFAULT '',
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for login history queries
+CREATE INDEX idx_login_history_user ON login_history (user_id, created_at DESC);
+CREATE INDEX idx_login_history_timestamp ON login_history (created_at DESC);
+
+-- ── 6. ACTIVE SESSIONS TABLE ──────────────────────────────────────────
+DROP TABLE IF EXISTS active_sessions CASCADE;
+CREATE TABLE active_sessions (
+  id            TEXT PRIMARY KEY,
+  user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  email         TEXT NOT NULL,
+  ip_address    TEXT DEFAULT '',
+  user_agent    TEXT DEFAULT '',
+  device_info   TEXT DEFAULT '',
+  location      TEXT DEFAULT '',
+  last_activity TIMESTAMPTZ DEFAULT NOW(),
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  expires_at    TIMESTAMPTZ NOT NULL
+);
+
+-- Index for active sessions queries
+CREATE INDEX idx_active_sessions_user ON active_sessions (user_id, last_activity DESC);
+CREATE INDEX idx_active_sessions_expires ON active_sessions (expires_at);
+
+-- Auto-cleanup expired sessions
+CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
+RETURNS void AS $$
+BEGIN
+  DELETE FROM active_sessions WHERE expires_at < NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- ── 7. ROW LEVEL SECURITY (RLS) POLICIES ──────────────────────────────
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pending_changes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE login_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 CREATE POLICY "Public profiles reading" ON profiles FOR SELECT USING (true);
@@ -157,13 +275,21 @@ CREATE POLICY "Update pending change" ON pending_changes FOR UPDATE USING (true)
 CREATE POLICY "Read audit log" ON audit_log FOR SELECT USING (true);
 CREATE POLICY "Insert audit log" ON audit_log FOR INSERT WITH CHECK (true);
 
--- ── 6. INDEXES ────────────────────────────────────────────────────────
+-- Login History Policies
+CREATE POLICY "Users can read own login history" ON login_history FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Backend can insert login history" ON login_history FOR INSERT WITH CHECK (true);
+
+-- Active Sessions Policies
+CREATE POLICY "Users can read own sessions" ON active_sessions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Backend can manage sessions" ON active_sessions FOR ALL USING (true) WITH CHECK (true);
+
+-- ── 8. INDEXES ────────────────────────────────────────────────────────
 CREATE INDEX idx_members_name ON members (name);
 CREATE INDEX idx_members_gmail ON members (gmail);
 CREATE INDEX idx_pending_status ON pending_changes (status);
 CREATE INDEX idx_audit_timestamp ON audit_log (timestamp DESC);
 
--- ── 7. SEED DATA FOR MEMBERS ──────────────────────────────────────────
+-- ── 9. SEED DATA FOR MEMBERS ──────────────────────────────────────────
 INSERT INTO members (
   name, gmail, phone, address, age, education, dl_name, marriage_date,
   property_owned, ssn_last4, visa_type, work_authorization, green_card_date,

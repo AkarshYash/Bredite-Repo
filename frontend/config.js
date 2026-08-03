@@ -1,16 +1,25 @@
-/**
- * Supabase Configuration for Google OAuth
- * 
- * TO ENABLE GOOGLE SIGN-IN:
- * 1. Create a Supabase project at https://supabase.com
- * 2. Go to Project Settings → API
- * 3. Copy your Project URL and anon/public key
- * 4. Replace the values below with your actual credentials
- * 5. Enable Google provider in Supabase Dashboard → Authentication → Providers
- */
+/* ═══════════════════════════════════════════════════════════
+   CONFIGURATION FILE - Supabase Settings
+   Update these values with your Supabase project credentials
+   Get these from: https://supabase.com → Your Project → Settings → API
+═══════════════════════════════════════════════════════════ */
 
-// ⚠️ IMPORTANT: Replace these with your actual Supabase credentials
-window.SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';  // e.g., 'https://abcdefgh.supabase.co'
-window.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Long JWT starting with 'eyJ...'
+// Your Supabase Project URL
+window.SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
 
-// For testing/demo mode, leave them as is - the app will use fallback auth
+// Your Supabase Anon/Public Key
+window.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+
+/* ═══════════════════════════════════════════════════════════
+   SETUP INSTRUCTIONS:
+   
+   1. Go to https://supabase.com and create a free account
+   2. Create a new project (takes ~2 minutes)
+   3. Go to Project Settings → API
+   4. Copy your "Project URL" and paste it above as SUPABASE_URL
+   5. Copy your "anon public" key and paste it above as SUPABASE_ANON_KEY
+   6. Run the SQL from supabase_schema.sql in SQL Editor
+   7. Enable Google OAuth in Authentication → Providers → Google
+   
+   Without these credentials, Google OAuth will use demo/fallback mode.
+═══════════════════════════════════════════════════════════ */
