@@ -14,11 +14,18 @@ const QRCode = require('qrcode');
 
 const router = express.Router();
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Initialize Supabase client (optional - works in demo mode without it)
+let supabase = null;
+try {
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+} catch (err) {
+  console.warn('[SECURITY] Running without Supabase - demo mode');
+}
 
 // ── POST /api/security/2fa/enable - Enable 2FA ──────────────
 router.post('/2fa/enable', requireAuth, async (req, res) => {

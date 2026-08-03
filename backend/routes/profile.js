@@ -13,11 +13,18 @@ const { logAudit } = require('./audit');
 
 const router = express.Router();
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Initialize Supabase client (optional - works in demo mode without it)
+let supabase = null;
+try {
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+} catch (err) {
+  console.warn('[PROFILE] Running without Supabase - demo mode');
+}
 
 // Configure multer for memory storage (we'll upload to Supabase Storage)
 const upload = multer({

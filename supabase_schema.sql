@@ -93,6 +93,7 @@ BEGIN
       WHEN LOWER(NEW.email) = 'admin@teamprofilehub.com' THEN 'ADMIN'
       WHEN LOWER(NEW.email) = 'member@teamprofilehub.com' THEN 'MEMBER'
       WHEN LOWER(NEW.email) = 'chaturvediakarsh51@gmail.com' THEN 'ADMIN'
+      WHEN LOWER(NEW.email) = 'akarsh.c@brudite.com' THEN 'MEMBER'
       ELSE 'PENDING'
     END,
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', '')
