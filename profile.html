@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile Settings - Team Profile Hub</title>
+  <link rel="stylesheet" href="profile.css" />
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+  <script src="config.js"></script>
+</head>
+<body class="barney">
+  
+  <!-- Background Animation -->
+  <div class="background">
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <h1><i class='bx bx-user-circle'></i> Profile Settings</h1>
+        <a href="/" class="btn-back">
+          <i class='bx bx-arrow-back'></i> Back to Dashboard
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-container">
+    <div class="container">
+      
+      <!-- Alert Messages -->
+      <div id="successAlert" class="alert alert-success hidden"></div>
+      <div id="errorAlert" class="alert alert-error hidden"></div>
+
+      <!-- Settings Grid -->
+      <div class="settings-grid">
+        
+        <!-- Left Column: Avatar & Basic Info -->
+        <div class="settings-card">
+          <div class="card-header">
+            <h2><i class='bx bx-image-alt'></i> Profile Picture</h2>
+          </div>
+          <div class="card-body">
+            
+            <!-- Avatar Upload -->
+            <div class="avatar-section">
+              <div class="avatar-preview">
+                <img id="avatarImage" src="https://ui-avatars.com/api/?name=User&size=200&background=667eea&color=fff" alt="Avatar" />
+                <div class="avatar-overlay">
+                  <i class='bx bx-camera'></i>
+                  <span>Change</span>
+                </div>
+                <input type="file" id="avatarInput" accept="image/jpeg,image/jpg,image/png,image/webp,image/gif" style="display: none;" />
+              </div>
+              <div class="avatar-actions">
+                <button class="btn btn-primary" id="uploadAvatarBtn">
+                  <i class='bx bx-upload'></i> Upload New
+                </button>
+                <button class="btn btn-secondary" id="removeAvatarBtn">
+                  <i class='bx bx-trash'></i> Remove
+                </button>
+              </div>
+              <p class="help-text">JPG, PNG, WEBP, or GIF. Max 5MB.</p>
+            </div>
+
+            <!-- Basic Info Form -->
+            <form id="basicInfoForm" class="form-section">
+              <h3>Basic Information</h3>
+              
+              <div class="form-group">
+                <label for="nameInput">
+                  <i class='bx bx-user'></i> Full Name
+                </label>
+                <input type="text" id="nameInput" placeholder="Enter your full name" required />
+              </div>
+
+              <div class="form-group">
+                <label for="emailInput">
+                  <i class='bx bx-envelope'></i> Email Address
+                </label>
+                <div class="input-with-badge">
+                  <input type="email" id="emailInput" readonly disabled />
+                  <span class="badge badge-verified hidden" id="emailVerifiedBadge">
+                    <i class='bx bx-check-circle'></i> Verified
+                  </span>
+                </div>
+                <p class="help-text">Email cannot be changed after registration</p>
+              </div>
+
+              <div class="form-group">
+                <label for="phoneInput">
+                  <i class='bx bx-phone'></i> Phone Number
+                </label>
+                <div class="input-with-badge">
+                  <input type="tel" id="phoneInput" placeholder="+1 (555) 000-0000" />
+                  <span class="badge badge-verified hidden" id="phoneVerifiedBadge">
+                    <i class='bx bx-check-circle'></i> Verified
+                  </span>
+                  <button type="button" class="btn-verify" id="verifyPhoneBtn">
+                    <i class='bx bx-shield-check'></i> Verify
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="bioInput">
+                  <i class='bx bx-text'></i> Bio
+                </label>
+                <textarea id="bioInput" rows="4" placeholder="Tell us about yourself..." maxlength="500"></textarea>
+                <span class="char-count">0 / 500</span>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block" id="saveBasicInfoBtn">
+                <i class='bx bx-save'></i>
+                <span id="saveBasicInfoText">Save Changes</span>
+                <i class='bx bx-loader-alt bx-spin spinner hidden' id="saveBasicInfoSpinner"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Right Column: Security & Verification -->
+        <div class="settings-column">
+          
+          <!-- Email Verification Card -->
+          <div class="settings-card">
+            <div class="card-header">
+              <h2><i class='bx bx-envelope-open'></i> Email Verification</h2>
+            </div>
+            <div class="card-body">
+              <div class="verification-status" id="emailVerificationSection">
+                <div class="status-indicator">
+                  <i class='bx bx-error-circle status-icon pending' id="emailStatusIcon"></i>
+                  <div>
+                    <h4 id="emailStatusTitle">Email Not Verified</h4>
+                    <p id="emailStatusText">Verify your email to secure your account</p>
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="sendEmailOtpBtn">
+                  <i class='bx bx-send'></i> Send Verification Code
+                </button>
+              </div>
+
+              <!-- OTP Input (hidden initially) -->
+              <form id="emailOtpForm" class="otp-form hidden">
+                <p class="otp-instructions">Enter the 6-digit code sent to your email</p>
+                <div class="otp-input-group">
+                  <input type="text" maxlength="6" id="emailOtpInput" placeholder="000000" pattern="[0-9]{6}" />
+                </div>
+                <div class="otp-actions">
+                  <button type="submit" class="btn btn-primary">
+                    <i class='bx bx-check'></i> Verify Code
+                  </button>
+                  <button type="button" class="btn btn-link" id="resendEmailOtpBtn">
+                    Resend Code
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Phone Verification Card -->
+          <div class="settings-card">
+            <div class="card-header">
+              <h2><i class='bx bx-phone'></i> Phone Verification</h2>
+            </div>
+            <div class="card-body">
+              <div class="verification-status" id="phoneVerificationSection">
+                <div class="status-indicator">
+                  <i class='bx bx-error-circle status-icon pending' id="phoneStatusIcon"></i>
+                  <div>
+                    <h4 id="phoneStatusTitle">Phone Not Verified</h4>
+                    <p id="phoneStatusText">Add and verify your phone number</p>
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="sendPhoneOtpBtn" disabled>
+                  <i class='bx bx-send'></i> Send SMS Code
+                </button>
+              </div>
+
+              <!-- OTP Input (hidden initially) -->
+              <form id="phoneOtpForm" class="otp-form hidden">
+                <p class="otp-instructions">Enter the 6-digit code sent to your phone</p>
+                <div class="otp-input-group">
+                  <input type="text" maxlength="6" id="phoneOtpInput" placeholder="000000" pattern="[0-9]{6}" />
+                </div>
+                <div class="otp-actions">
+                  <button type="submit" class="btn btn-primary">
+                    <i class='bx bx-check'></i> Verify Code
+                  </button>
+                  <button type="button" class="btn btn-link" id="resendPhoneOtpBtn">
+                    Resend Code
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Password Change Card -->
+          <div class="settings-card">
+            <div class="card-header">
+              <h2><i class='bx bx-lock-alt'></i> Change Password</h2>
+            </div>
+            <div class="card-body">
+              <form id="changePasswordForm">
+                <div class="form-group">
+                  <label for="currentPassword">Current Password</label>
+                  <div class="input-with-icon">
+                    <input type="password" id="currentPassword" placeholder="Enter current password" required />
+                    <button type="button" class="toggle-password" data-target="currentPassword">
+                      <i class='bx bx-show'></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="newPassword">New Password</label>
+                  <div class="input-with-icon">
+                    <input type="password" id="newPassword" placeholder="Enter new password" required minlength="8" />
+                    <button type="button" class="toggle-password" data-target="newPassword">
+                      <i class='bx bx-show'></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="confirmNewPassword">Confirm New Password</label>
+                  <div class="input-with-icon">
+                    <input type="password" id="confirmNewPassword" placeholder="Confirm new password" required />
+                    <button type="button" class="toggle-password" data-target="confirmNewPassword">
+                      <i class='bx bx-show'></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Password Strength Indicator -->
+                <div class="strength-indicator hidden" id="passwordStrengthProfile">
+                  <div class="strength-bar">
+                    <div class="strength-fill"></div>
+                  </div>
+                  <span class="strength-text">Password strength: <strong></strong></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="changePasswordBtn">
+                  <i class='bx bx-key'></i>
+                  <span id="changePasswordText">Update Password</span>
+                  <i class='bx bx-loader-alt bx-spin spinner hidden' id="changePasswordSpinner"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Account Info Card -->
+          <div class="settings-card">
+            <div class="card-header">
+              <h2><i class='bx bx-info-circle'></i> Account Information</h2>
+            </div>
+            <div class="card-body">
+              <div class="info-row">
+                <span class="info-label">Account Status</span>
+                <span class="badge" id="roleBadge">MEMBER</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Member Since</span>
+                <span class="info-value" id="memberSince">-</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Last Updated</span>
+                <span class="info-value" id="lastUpdated">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security Features Card -->
+          <div class="settings-card">
+            <div class="card-header">
+              <h2><i class='bx bx-shield-check'></i> Security</h2>
+            </div>
+            <div class="card-body">
+              
+              <!-- 2FA Toggle -->
+              <div class="security-feature">
+                <div class="feature-info">
+                  <h4><i class='bx bx-lock-alt'></i> Two-Factor Authentication</h4>
+                  <p>Add an extra layer of security to your account</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="2faToggle" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <!-- 2FA Setup Modal Content (hidden initially) -->
+              <div id="2faSetup" class="setup-section hidden">
+                <div class="qr-section">
+                  <p class="help-text">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
+                  <img id="qrCodeImage" src="" alt="QR Code" class="qr-code" />
+                  <p class="manual-code">Manual entry code: <code id="manualSecret"></code></p>
+                </div>
+                <form id="verify2faForm">
+                  <div class="form-group">
+                    <label>Enter 6-digit code from your app</label>
+                    <input type="text" id="2faVerifyCode" maxlength="6" placeholder="000000" pattern="[0-9]{6}" required />
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">
+                    <i class='bx bx-check-circle'></i> Verify & Enable 2FA
+                  </button>
+                </form>
+              </div>
+
+              <!-- Login History Link -->
+              <div class="security-feature">
+                <div class="feature-info">
+                  <h4><i class='bx bx-history'></i> Login History</h4>
+                  <p>View your recent login activity</p>
+                </div>
+                <button class="btn btn-secondary" id="viewLoginHistoryBtn">
+                  <i class='bx bx-right-arrow-alt'></i> View
+                </button>
+              </div>
+
+              <!-- Active Sessions Link -->
+              <div class="security-feature">
+                <div class="feature-info">
+                  <h4><i class='bx bx-devices'></i> Active Sessions</h4>
+                  <p>Manage devices logged into your account</p>
+                </div>
+                <button class="btn btn-secondary" id="viewSessionsBtn">
+                  <i class='bx bx-right-arrow-alt'></i> View
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Login History Modal -->
+  <div id="loginHistoryModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class='bx bx-history'></i> Login History</h2>
+        <button class="close-modal" data-modal="loginHistoryModal">
+          <i class='bx bx-x'></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="loginHistoryList" class="history-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Sessions Modal -->
+  <div id="sessionsModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2><i class='bx bx-devices'></i> Active Sessions</h2>
+        <button class="close-modal" data-modal="sessionsModal">
+          <i class='bx bx-x'></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="sessionsList" class="sessions-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Cropper Modal -->
+  <div id="cropperModal" class="modal hidden">
+    <div class="modal-content large">
+      <div class="modal-header">
+        <h2><i class='bx bx-crop'></i> Crop Image</h2>
+        <button class="close-modal" id="closeCropperBtn">
+          <i class='bx bx-x'></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="cropper-container">
+          <img id="cropperImage" src="" alt="Image to crop" />
+        </div>
+        <div class="cropper-controls">
+          <button class="btn btn-secondary" id="rotateLeftBtn">
+            <i class='bx bx-rotate-left'></i> Rotate Left
+          </button>
+          <button class="btn btn-secondary" id="rotateRightBtn">
+            <i class='bx bx-rotate-right'></i> Rotate Right
+          </button>
+          <button class="btn btn-secondary" id="flipHorizontalBtn">
+            <i class='bx bx-reflect-horizontal'></i> Flip H
+          </button>
+          <button class="btn btn-secondary" id="flipVerticalBtn">
+            <i class='bx bx-reflect-vertical'></i> Flip V
+          </button>
+          <button class="btn btn-secondary" id="resetCropBtn">
+            <i class='bx bx-reset'></i> Reset
+          </button>
+        </div>
+        <div class="cropper-actions">
+          <button class="btn btn-secondary" id="cancelCropBtn">
+            <i class='bx bx-x'></i> Cancel
+          </button>
+          <button class="btn btn-primary" id="applyCropBtn">
+            <i class='bx bx-check'></i> Apply & Upload
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="profile.js"></script>
+</body>
+</html>

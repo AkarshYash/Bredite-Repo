@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In - Team Profile Hub</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <link rel="stylesheet" href="auth.css" />
+</head>
+<body class="barney">
+
+  <!-- Theme Picker -->
+  <ul class="theme-picker">
+    <li data-theme="barney" class="barney pressed"></li>
+    <li data-theme="slate" class="slate"></li>
+    <li data-theme="candy" class="candy"></li>
+    <li data-theme="firewatch" class="firewatch"></li>
+    <li data-theme="citrus" class="citrus"></li>
+    <li data-theme="marsh" class="marsh"></li>
+    <li data-theme="frost" class="frost"></li>
+  </ul>
+
+  <!-- Main Auth Container -->
+  <div class="auth-container">
+    
+    <!-- Login Form -->
+    <form class="auth-form" id="loginForm">
+      <div class="form-logo">
+        <i class='bx bxs-buildings'></i>
+      </div>
+      <h1>Welcome Back</h1>
+      <p class="subtitle">Sign in to access your profile dashboard</p>
+
+      <!-- Error Alert -->
+      <div id="authError" class="alert alert-error hidden"></div>
+      
+      <!-- Success Alert -->
+      <div id="authSuccess" class="alert alert-success hidden"></div>
+
+      <!-- Email Input -->
+      <div class="input-wrapper">
+        <input 
+          type="email" 
+          id="loginEmail" 
+          placeholder="Enter your email" 
+          required 
+          autocomplete="email"
+        />
+        <i class='bx bxs-envelope'></i>
+      </div>
+
+      <!-- Password Input -->
+      <div class="input-wrapper">
+        <input 
+          type="password" 
+          id="loginPassword" 
+          placeholder="Enter your password" 
+          required 
+          autocomplete="current-password"
+        />
+        <i class='bx bx-key'></i>
+        <button type="button" class="toggle-password" data-target="loginPassword">
+          <i class='bx bx-show'></i>
+        </button>
+      </div>
+
+      <!-- Remember Me & Forgot Password -->
+      <div class="form-options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="rememberMe" checked />
+          <span>Remember me</span>
+        </label>
+        <a href="#" class="link-btn" id="forgotPasswordLink">Forgot Password?</a>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="button-wrapper">
+        <button type="submit" class="btn-submit" id="loginBtn">
+          <span id="loginBtnText">Sign In</span>
+          <i class='bx bx-right-arrow-alt'></i>
+          <span class="spinner hidden" id="loginSpinner"></span>
+        </button>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span>or continue with</span>
+      </div>
+
+      <!-- OAuth Buttons -->
+      <div class="oauth-buttons">
+        <button type="button" class="btn-oauth google" id="googleBtn">
+          <svg width="20" height="20" viewBox="0 0 18 18">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.617z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+      </div>
+
+      <!-- Switch to Signup -->
+      <div class="form-switch">
+        <span>Don't have an account?</span>
+        <a href="#" class="link-btn-primary" id="switchToSignup">Create Account</a>
+      </div>
+    </form>
+
+    <!-- Signup Form -->
+    <form class="auth-form hidden" id="signupForm">
+      <div class="form-logo">
+        <i class='bx bxs-user-plus'></i>
+      </div>
+      <h1>Create Account</h1>
+      <p class="subtitle">Join Team Profile Hub today</p>
+
+      <!-- Error Alert -->
+      <div id="signupError" class="alert alert-error hidden"></div>
+      
+      <!-- Success Alert -->
+      <div id="signupSuccess" class="alert alert-success hidden"></div>
+
+      <!-- Full Name Input -->
+      <div class="input-wrapper">
+        <input 
+          type="text" 
+          id="signupName" 
+          placeholder="Enter your full name" 
+          required 
+          autocomplete="name"
+        />
+        <i class='bx bxs-user'></i>
+      </div>
+
+      <!-- Email Input -->
+      <div class="input-wrapper">
+        <input 
+          type="email" 
+          id="signupEmail" 
+          placeholder="Enter your email" 
+          required 
+          autocomplete="email"
+        />
+        <i class='bx bxs-envelope'></i>
+      </div>
+
+      <!-- Password Input -->
+      <div class="input-wrapper">
+        <input 
+          type="password" 
+          id="signupPassword" 
+          placeholder="Create a password" 
+          required 
+          autocomplete="new-password"
+          minlength="8"
+        />
+        <i class='bx bx-key'></i>
+        <button type="button" class="toggle-password" data-target="signupPassword">
+          <i class='bx bx-show'></i>
+        </button>
+      </div>
+
+      <!-- Password Strength Indicator -->
+      <div class="password-strength hidden" id="passwordStrength">
+        <div class="strength-bar">
+          <div class="strength-fill"></div>
+        </div>
+        <span class="strength-text">Password strength: <strong>Weak</strong></span>
+      </div>
+
+      <!-- Confirm Password Input -->
+      <div class="input-wrapper">
+        <input 
+          type="password" 
+          id="signupPasswordConfirm" 
+          placeholder="Confirm your password" 
+          required 
+          autocomplete="new-password"
+          minlength="8"
+        />
+        <i class='bx bx-check-shield'></i>
+        <button type="button" class="toggle-password" data-target="signupPasswordConfirm">
+          <i class='bx bx-show'></i>
+        </button>
+      </div>
+
+      <!-- Terms Checkbox -->
+      <div class="form-options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="agreeTerms" required />
+          <span>I agree to the <a href="#" class="link-inline">Terms of Service</a> and <a href="#" class="link-inline">Privacy Policy</a></span>
+        </label>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="button-wrapper">
+        <button type="submit" class="btn-submit" id="signupBtn">
+          <span id="signupBtnText">Create Account</span>
+          <i class='bx bx-right-arrow-alt'></i>
+          <span class="spinner hidden" id="signupSpinner"></span>
+        </button>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span>or sign up with</span>
+      </div>
+
+      <!-- OAuth Buttons -->
+      <div class="oauth-buttons">
+        <button type="button" class="btn-oauth google" id="googleSignupBtn">
+          <svg width="20" height="20" viewBox="0 0 18 18">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.617z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+      </div>
+
+      <!-- Switch to Login -->
+      <div class="form-switch">
+        <span>Already have an account?</span>
+        <a href="#" class="link-btn-primary" id="switchToLogin">Sign In</a>
+      </div>
+    </form>
+
+    <!-- Forgot Password Form -->
+    <form class="auth-form hidden" id="forgotPasswordForm">
+      <div class="form-logo">
+        <i class='bx bxs-lock-open'></i>
+      </div>
+      <h1>Reset Password</h1>
+      <p class="subtitle">Enter your email to receive a password reset link</p>
+
+      <!-- Error Alert -->
+      <div id="forgotError" class="alert alert-error hidden"></div>
+      
+      <!-- Success Alert -->
+      <div id="forgotSuccess" class="alert alert-success hidden"></div>
+
+      <!-- Email Input -->
+      <div class="input-wrapper">
+        <input 
+          type="email" 
+          id="forgotEmail" 
+          placeholder="Enter your email" 
+          required 
+          autocomplete="email"
+        />
+        <i class='bx bxs-envelope'></i>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="button-wrapper">
+        <button type="submit" class="btn-submit" id="forgotBtn">
+          <span id="forgotBtnText">Send Reset Link</span>
+          <i class='bx bx-right-arrow-alt'></i>
+          <span class="spinner hidden" id="forgotSpinner"></span>
+        </button>
+      </div>
+
+      <!-- Back to Login -->
+      <div class="form-switch">
+        <a href="#" class="link-btn-primary" id="backToLogin">
+          <i class='bx bx-arrow-back'></i>
+          Back to Sign In
+        </a>
+      </div>
+    </form>
+
+  </div>
+
+  <!-- Background Decoration -->
+  <div class="bg-decoration">
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+    <div class="circle circle-3"></div>
+  </div>
+
+  <script src="auth.js"></script>
+</body>
+</html>
