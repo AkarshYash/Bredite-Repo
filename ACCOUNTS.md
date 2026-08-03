@@ -1,6 +1,11 @@
 # Team Profile Hub - Account Information
 
 ## 🌐 Live Deployment
+
+### Main Dashboard
+**URL:** https://us-data-store-grid.vercel.app/
+
+### Authentication Page  
 **URL:** https://us-data-store-grid.vercel.app/auth.html
 
 ---
@@ -59,10 +64,11 @@ Invoke-RestMethod -Uri 'https://us-data-store-grid.vercel.app/api/auth/signup' -
 ```
 
 ### 3. Test via Browser
-1. Go to: https://us-data-store-grid.vercel.app/auth.html
-2. Enter credentials (see accounts above)
-3. Click "Sign In"
-4. You should be redirected to the dashboard
+1. **Main Dashboard:** https://us-data-store-grid.vercel.app/
+2. **Auth Page:** https://us-data-store-grid.vercel.app/auth.html
+3. Enter credentials (see accounts above)
+4. Click "Sign In"
+5. You should be redirected to the main dashboard with full access
 
 ---
 
@@ -232,7 +238,11 @@ api/
 
 ## 🎉 System is Ready!
 
-The authentication system is now fully deployed and functional at:
-**https://us-data-store-grid.vercel.app/auth.html**
+The complete system is now fully deployed and functional:
+
+### Main Applications
+- **Dashboard:** https://us-data-store-grid.vercel.app/
+- **Authentication:** https://us-data-store-grid.vercel.app/auth.html
+- **Profile Management:** https://us-data-store-grid.vercel.app/profile.html
 
 You can login with either account and access all features!
