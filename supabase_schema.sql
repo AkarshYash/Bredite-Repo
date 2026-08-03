@@ -23,7 +23,12 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
-    'MEMBER'
+    CASE 
+      WHEN LOWER(NEW.email) = 'admin@teamprofilehub.com' THEN 'ADMIN'
+      WHEN LOWER(NEW.email) = 'member@teamprofilehub.com' THEN 'MEMBER'
+      WHEN LOWER(NEW.email) = 'chaturvediakarsh51@gmail.com' THEN 'ADMIN'
+      ELSE 'PENDING'
+    END
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

@@ -23,6 +23,7 @@ function getInitialRole(email) {
   const clean = (email || '').toLowerCase();
   if (clean === 'admin@teamprofilehub.com') return 'ADMIN';
   if (clean === 'member@teamprofilehub.com') return 'MEMBER';
+  if (clean === 'chaturvediakarsh51@gmail.com') return 'ADMIN'; // Pre-approved admin account
   return 'PENDING'; // New user registrations start as PENDING for Admin approval
 }
 
