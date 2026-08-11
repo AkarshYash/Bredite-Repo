@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Team Profile Hub
 
 A full-stack web application for managing US IT Consultants profiles with role-based access control, authentication, and approval workflows.
@@ -118,24 +118,6 @@ The application runs in **demo mode** with in-memory data when Supabase credenti
 
 - **Admin**: `admin@demo.com` / `admin123` (full access)
 - **Member**: `member@demo.com` / `member123` (view & submit proposals)
-
-## 🗄️ Database Setup (Optional)
-
-For production with Supabase:
-
-1. Create a free account at [supabase.com](https://supabase.com)
-2. Create a new project
-3. Copy your project URL and anon key to `.env`
-4. Run the database schema (see Supabase dashboard)
-
-## 🚀 Deployment
-
-The application is configured to run as a single server that serves both API and frontend:
-
-- Backend serves API routes at `/api/*`
-- Backend serves frontend static files from the root
-- Single deployment, single port
-
 ## 📝 API Endpoints
 
 ### Authentication
@@ -193,14 +175,4 @@ The application is configured to run as a single server that serves both API and
 
 Private project - All rights reserved
 
-## 👥 Authors
 
-- Akarsh Chaturvedi
-- Nirav Patel
-
-## 🤝 Contributing
-
-This is a private internal tool. For access or questions, contact the development team.
-=======
-# Bredite-Repo
->>>>>>> cf5b342ab3e59ed4636d053ee9b38d44a22e584f
