@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Team Profile Hub
 
 A full-stack web application for managing US IT Consultants profiles with role-based access control, authentication, and approval workflows.
@@ -200,3 +201,6 @@ Private project - All rights reserved
 ## 🤝 Contributing
 
 This is a private internal tool. For access or questions, contact the development team.
+=======
+# Bredite-Repo
+>>>>>>> cf5b342ab3e59ed4636d053ee9b38d44a22e584f
